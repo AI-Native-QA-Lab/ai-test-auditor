@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run build
+      - run: |
+          set +e
+          node dist/cli.js review benchmarks --format json
+          audit_exit=$?
+          if [ "$audit_exit" -ne 1 ]; then
+            echo "Expected benchmark audit to exit 1, received $audit_exit."
+            exit 1
+          fi
