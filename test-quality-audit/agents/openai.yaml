@@ -1,0 +1,9 @@
+version: 1
+metadata:
+  key: 'test-quality-audit'
+interface:
+  display_name: 'Test Quality Audit'
+  short_description: 'Review test source for deterministic false-confidence patterns without inventing runtime evidence.'
+  default_prompt: 'Use $test-quality-audit to review supplied JavaScript or TypeScript test source with evidence-backed findings, review questions, and unassessed boundaries.'
+policy:
+  allow_implicit_invocation: true

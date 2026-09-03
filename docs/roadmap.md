@@ -1,0 +1,31 @@
+<div align="right"><strong>English</strong> · <a href="./zh/roadmap.md">简体中文</a></div>
+
+# Roadmap
+
+## Delivered MVP foundation
+
+- Problem definition: ineffective / false-confidence tests.
+- Source-only AST pipeline, deterministic rules, CLI, JSON/text reporting, transparent score/FTR.
+- Jest/Vitest/Playwright direct callback support, benchmark fixtures, bilingual Skill, and CI foundation.
+
+## Iteration plan
+
+| Phase | Outcome                                                                             | Evidence required before claiming delivery                                            |
+| ----- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 0.1   | Deterministic static-rule MVP.                                                      | Rule-level positive/negative tests and CLI fixtures.                                  |
+| 0.2   | More framework extraction and configuration, including explicit parser diagnostics. | Fixture corpus and compatibility matrix.                                              |
+| 0.3   | Optional semantic review interface.                                                 | Versioned prompt/schema, disclosed model and evidence limits, evaluation set.         |
+| 0.4   | Mutation-evidence adapter.                                                          | Reproducible mutation command, threshold provenance, and result schema.               |
+| 0.5   | Unit/API/E2E rule expansion and changed-file selection.                             | Rule catalog, false-positive analysis, integration tests.                             |
+| 1.0   | CI/PR quality-gate integrations.                                                    | Opt-in policy configuration, end-to-end CI samples, and documented failure semantics. |
+
+## Sequencing principles
+
+1. Define false-confidence patterns before automating them.
+2. Keep deterministic evidence distinct from model inferences and execution evidence.
+3. Prefer precision and explainability over a large rule count.
+4. A CI gate must remain opt-in until stable, measured false-positive behavior exists.
+
+## Non-commitments
+
+Dates, coverage targets, model providers, mutation engines, supported future frameworks, and gate thresholds are intentionally not committed in this roadmap. They need evidence and maintainer decisions.
