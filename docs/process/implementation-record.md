@@ -1,5 +1,9 @@
 # Implementation Record
 
+## 2026-09-04 — TDD delivery policy
+
+All future features, fixes, refactors, and behavior changes must follow an observed RED-GREEN-REFACTOR cycle. Material changes record the focused RED and GREEN commands alongside full-suite evidence.
+
 ## 2026-09-04 — v0.2 extraction scope
 
 v0.2 adds nested suite labels, parameterized Jest/Vitest test extraction, parser diagnostics, and an optional basename exclusion configuration. Diagnostics only report TypeScript source-parser observations; they do not establish runtime validity.
