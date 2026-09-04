@@ -16,7 +16,7 @@
 ## Working conventions
 
 1. Read the related rule, its test, and [docs/rules.md](./docs/rules.md) before changing analysis behavior.
-2. Add a focused failing test before production-rule changes; run it red, implement the smallest fix, then run it green.
+2. Apply TDD to every feature, bug fix, refactor, and behavior change: add a focused failing test, confirm the expected RED failure, implement the smallest change, confirm GREEN, then refactor only while green. Production code without an observed failing test is not acceptable.
 3. Preserve unrelated working-tree changes. Do not reset, clean, or overwrite them.
 4. Add process evidence to `docs/process/implementation-record.md` and its Chinese counterpart `docs/process/implementation-record_zh.md` for material decisions, validation commands, scope changes, and known limits.
 5. Keep `test-quality-audit/` bilingual: English `SKILL.md`, Chinese `SKILL_ZH.md`, matching prompts, and maintained examples/evals.

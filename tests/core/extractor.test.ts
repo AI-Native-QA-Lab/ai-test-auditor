@@ -2,7 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { extractTests } from '../../src/core/extractor';
+import {
+  extractTests,
+  extractTestsWithDiagnostics,
+} from '../../src/core/extractor';
 
 const fixtureDirectories: string[] = [];
 
@@ -33,7 +36,7 @@ describe('extractTests', () => {
 
     expect(tests).toMatchObject([
       {
-        name: 'adds numbers',
+        name: 'calculator > adds numbers',
         framework: 'vitest',
         type: 'unknown',
         filePath: resolve(filePath),
@@ -42,7 +45,7 @@ describe('extractTests', () => {
         body: '{\n    expect(1 + 2).toBe(3);\n  }',
       },
       {
-        name: 'supports async callbacks',
+        name: 'calculator > supports async callbacks',
         framework: 'vitest',
         type: 'unknown',
         filePath: resolve(filePath),
@@ -50,8 +53,14 @@ describe('extractTests', () => {
         source: 'async () => {\n    await Promise.resolve();\n  }',
         body: '{\n    await Promise.resolve();\n  }',
       },
+      {
+        name: 'parameterized %i',
+        framework: 'vitest',
+        type: 'unknown',
+        line: 13,
+      },
     ]);
-    expect(tests).toHaveLength(2);
+    expect(tests).toHaveLength(3);
   });
 
   it('identifies Playwright test callbacks as e2e without executing the source', async () => {
@@ -88,5 +97,25 @@ describe('extractTests', () => {
         line: 5,
       },
     ]);
+  });
+
+  it('extracts parameterized tests and nested suite context', async () => {
+    const filePath = await createFixture(
+      'matrix.test.ts',
+      "import { describe, test } from 'vitest';\n\ndescribe('calculator', () => {\n  test.each([[1, 2]])('adds %i and %i', (left, right) => {\n    expect(left + right).toBe(3);\n  });\n});\n",
+    );
+
+    expect(extractTests(filePath)).toMatchObject([
+      { name: 'calculator > adds %i and %i', framework: 'vitest', line: 4 },
+    ]);
+  });
+
+  it('returns parser diagnostics without executing invalid source', async () => {
+    const filePath = await createFixture(
+      'broken.test.ts',
+      "import { test } from 'vitest'; test('broken', () => {",
+    );
+
+    expect(extractTestsWithDiagnostics(filePath).diagnostics).toHaveLength(1);
   });
 });

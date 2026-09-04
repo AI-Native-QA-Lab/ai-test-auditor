@@ -19,6 +19,17 @@ export interface TestCase {
   readonly body: string;
 }
 
+export interface ParserDiagnostic {
+  readonly filePath: string;
+  readonly line: number;
+  readonly message: string;
+}
+
+export interface ExtractionResult {
+  readonly tests: readonly TestCase[];
+  readonly diagnostics: readonly ParserDiagnostic[];
+}
+
 export interface Finding {
   readonly ruleId: string;
   readonly severity: Severity;
@@ -44,5 +55,6 @@ export interface AuditSummary {
 export interface AuditResult {
   readonly tests: readonly TestCase[];
   readonly findings: readonly Finding[];
+  readonly diagnostics?: readonly ParserDiagnostic[];
   readonly summary: AuditSummary;
 }

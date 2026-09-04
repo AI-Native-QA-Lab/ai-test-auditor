@@ -1,6 +1,6 @@
-import { stat } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { extractTests } from './extractor.js';
+import { readFile, stat } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
+import { extractTestsWithDiagnostics } from './extractor.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
 import type {
@@ -13,6 +13,10 @@ import type {
 } from './types.js';
 
 export type ReviewType = Exclude<TestType, 'unknown'> | 'auto';
+export interface AuditOptions {
+  readonly type?: ReviewType;
+  readonly configPath?: string;
+}
 
 const supportedTestFile = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
 
@@ -37,8 +41,10 @@ export function auditTestCases(tests: readonly TestCase[]): AuditResult {
 
 export async function auditPath(
   inputPath: string,
-  reviewType: ReviewType = 'auto',
+  options: AuditOptions | ReviewType = 'auto',
 ): Promise<AuditResult> {
+  const reviewType =
+    typeof options === 'string' ? options : (options.type ?? 'auto');
   const absolutePath = resolve(inputPath);
   let inputStats;
 
@@ -67,11 +73,53 @@ export async function auditPath(
     );
   }
 
-  const tests = files
-    .flatMap((filePath) => extractTests(filePath))
+  const config =
+    typeof options === 'string'
+      ? { include: [], exclude: [] }
+      : await readConfig(options.configPath);
+  const selectedFiles = files.filter((filePath) => {
+    const name = basename(filePath);
+    return (
+      (config.include.length === 0 || config.include.includes(name)) &&
+      !config.exclude.includes(name)
+    );
+  });
+  const outcomes = selectedFiles.map((filePath) =>
+    extractTestsWithDiagnostics(filePath),
+  );
+  const tests = outcomes
+    .flatMap((outcome) => outcome.tests)
     .map((testCase) => applyReviewType(testCase, reviewType));
 
-  return auditTestCases(tests);
+  const result = auditTestCases(tests);
+  const diagnostics = outcomes.flatMap((outcome) => outcome.diagnostics);
+  return diagnostics.length === 0 ? result : { ...result, diagnostics };
+}
+
+async function readConfig(configPath?: string): Promise<{
+  readonly include: readonly string[];
+  readonly exclude: readonly string[];
+}> {
+  if (!configPath) return { include: [], exclude: [] };
+  try {
+    const raw: unknown = JSON.parse(
+      await readFile(resolve(configPath), 'utf8'),
+    );
+    if (!raw || typeof raw !== 'object') throw new Error();
+    const candidate = raw as { include?: unknown; exclude?: unknown };
+    const include = candidate.include ?? [];
+    const exclude = candidate.exclude ?? [];
+    if (
+      !Array.isArray(include) ||
+      !Array.isArray(exclude) ||
+      !include.every((value) => typeof value === 'string') ||
+      !exclude.every((value) => typeof value === 'string')
+    )
+      throw new Error();
+    return { include, exclude };
+  } catch {
+    throw new InputPathError(`Config file is invalid: ${resolve(configPath)}`);
+  }
 }
 
 function applyReviewType(testCase: TestCase, reviewType: ReviewType): TestCase {

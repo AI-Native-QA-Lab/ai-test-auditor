@@ -26,6 +26,16 @@
 3. Prefer precision and explainability over a large rule count.
 4. A CI gate must remain opt-in until stable, measured false-positive behavior exists.
 
+## v0.2 compatibility matrix
+
+| Framework  | Direct `test` / `it` | Nested suite names        | `test.each` / `it.each` | Parser diagnostics |
+| ---------- | -------------------- | ------------------------- | ----------------------- | ------------------ |
+| Jest       | Supported            | Supported                 | Supported syntax        | Supported          |
+| Vitest     | Supported            | Supported                 | Supported syntax        | Supported          |
+| Playwright | Supported            | `test.describe` supported | Not claimed             | Supported          |
+
+`ata.config.json` may provide `include` and `exclude` arrays of test-file basenames. This is a narrow source-selection control, not a framework runtime configuration.
+
 ## Non-commitments
 
 Dates, coverage targets, model providers, mutation engines, supported future frameworks, and gate thresholds are intentionally not committed in this roadmap. They need evidence and maintainer decisions.
