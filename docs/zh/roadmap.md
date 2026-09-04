@@ -36,6 +36,10 @@
 
 `ata.config.json` 可提供测试文件 basename 的 `include` 和 `exclude` 数组。这是有限的源码选择控制，不是框架运行时配置。
 
+## v0.3 语义审计契约
+
+`--semantic-report <path>` 加载 version `1` 的建议性 JSON 产物。默认操作完全离线。`semanticProvider` 配置接受 `offline`、`openai` 或 `anthropic`，以及环境变量名和可选模型；v0.3 只校验配置，绝不读取 Key 或发起网络调用。
+
 ## 不作承诺
 
 日期、覆盖率目标、模型供应商、变异引擎、未来框架与门禁阈值尚未承诺，需要实证和维护者决策。

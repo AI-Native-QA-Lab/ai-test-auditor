@@ -148,4 +148,46 @@ describe('ata review', () => {
     expect(invocation.code).toBe(0);
     expect(invocation.stdout).not.toContain('fake');
   });
+
+  it('validates optional OpenAI provider configuration without reading a key', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('ok', () => { expect(value).toBe('ok'); });",
+    );
+    const configPath = await config(
+      root,
+      '{"semanticProvider":{"kind":"openai","apiKeyEnv":"OPENAI_API_KEY","model":"gpt-5"}}',
+    );
+    expect((await invoke(['review', root, '--config', configPath])).code).toBe(
+      0,
+    );
+  });
+
+  it('attaches a semantic report without changing static exit semantics', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('unassessed', () => { expect(value).toBe('ok'); });",
+    );
+    const report = join(root, 'semantic.json');
+    await writeFile(
+      report,
+      '{"version":"1","provider":"offline","inferences":[{"filePath":"example.test.ts","line":1,"confidence":"LOW","summary":"Missing domain context."}]}',
+    );
+
+    const invocation = await invoke([
+      'review',
+      root,
+      '--semantic-report',
+      report,
+      '--format',
+      'json',
+    ]);
+
+    expect(invocation.code).toBe(0);
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      summary: { unassessed: 1 },
+      semantic: {
+        provider: 'offline',
+        inferences: [{ summary: 'Missing domain context.' }],
+      },
+    });
+  });
 });
