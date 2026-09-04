@@ -1,5 +1,9 @@
 # Implementation Record
 
+## 2026-09-04 — v0.2 extraction scope
+
+v0.2 adds nested suite labels, parameterized Jest/Vitest test extraction, parser diagnostics, and an optional basename exclusion configuration. Diagnostics only report TypeScript source-parser observations; they do not establish runtime validity.
+
 ## 2026-09-03 — License decision
 
 The project license changed to PolyForm Noncommercial License 1.0.0. `LICENSE`, package metadata, public entry points, and contribution guidance link to the official terms. The repository does not make legal advice or commercial-use determinations.
