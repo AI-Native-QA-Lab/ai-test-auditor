@@ -21,6 +21,12 @@ async function fixture(source: string): Promise<string> {
   return root;
 }
 
+async function config(root: string, source: string): Promise<string> {
+  const path = join(root, 'ata.config.json');
+  await writeFile(path, source);
+  return path;
+}
+
 async function invoke(args: string[]): Promise<{
   readonly code: number;
   readonly stdout: string;
@@ -109,5 +115,37 @@ describe('ata review', () => {
     expect(invocation.stdout).toContain('0  No FAKE findings');
     expect(invocation.stdout).toContain('1  One or more FAKE findings');
     expect(invocation.stdout).toContain('2  Invalid command or input');
+  });
+
+  it('uses config excludes to restrict audited files', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('included', () => { expect(value).toBe('ok'); });",
+    );
+    await writeFile(
+      join(root, 'ignored.test.ts'),
+      "import { expect, test } from 'vitest'; test('ignored', () => { expect(true).toBe(true); });",
+    );
+    const configPath = await config(root, '{"exclude":["ignored.test.ts"]}');
+
+    const invocation = await invoke(['review', root, '--config', configPath]);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stdout).not.toContain('ignored');
+  });
+
+  it('uses config includes as an explicit source allow-list', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('included', () => { expect(value).toBe('ok'); });",
+    );
+    await writeFile(
+      join(root, 'second.test.ts'),
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    const configPath = await config(root, '{"include":["example.test.ts"]}');
+
+    const invocation = await invoke(['review', root, '--config', configPath]);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stdout).not.toContain('fake');
   });
 });

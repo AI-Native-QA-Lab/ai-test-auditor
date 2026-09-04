@@ -35,6 +35,7 @@ export async function runCli(
         .choices(['unit', 'api', 'e2e', 'auto'])
         .default('auto'),
     )
+    .option('--config <path>', 'JSON configuration file with an exclude array')
     .addOption(
       new Option('--format <format>', 'output format')
         .choices(['text', 'json'])
@@ -47,9 +48,16 @@ export async function runCli(
     .action(
       async (
         inputPath: string,
-        options: { readonly type: ReviewType; readonly format: OutputFormat },
+        options: {
+          readonly type: ReviewType;
+          readonly format: OutputFormat;
+          readonly config?: string;
+        },
       ) => {
-        const result = await auditPath(inputPath, options.type);
+        const result = await auditPath(inputPath, {
+          type: options.type,
+          configPath: options.config,
+        });
         io.stdout(
           options.format === 'json' ? renderJson(result) : renderText(result),
         );

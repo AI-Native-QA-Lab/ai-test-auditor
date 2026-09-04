@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as ts from 'typescript';
-import type { Framework, TestCase } from './types.js';
+import type {
+  ExtractionResult,
+  Framework,
+  ParserDiagnostic,
+  TestCase,
+} from './types.js';
 
 const frameworkModules: Readonly<Record<string, Framework>> = {
   '@jest/globals': 'jest',
@@ -47,6 +52,12 @@ function testName(call: ts.CallExpression): string | undefined {
 }
 
 export function extractTests(filePath: string): TestCase[] {
+  return [...extractTestsWithDiagnostics(filePath).tests];
+}
+
+export function extractTestsWithDiagnostics(
+  filePath: string,
+): ExtractionResult {
   const absolutePath = resolve(filePath);
   const sourceFile = ts.createSourceFile(
     absolutePath,
@@ -59,18 +70,14 @@ export function extractTests(filePath: string): TestCase[] {
   const tests: TestCase[] = [];
 
   function visit(node: ts.Node): void {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+    if (ts.isCallExpression(node)) {
       const name = testName(node);
       const callback = callbackFor(node);
 
-      if (
-        (node.expression.text === 'test' || node.expression.text === 'it') &&
-        name &&
-        callback
-      ) {
+      if (isTestInvocation(node) && name && callback) {
         tests.push({
           filePath: absolutePath,
-          name,
+          name: [...suiteNames(node), name].join(' > '),
           framework,
           type: framework === 'playwright' ? 'e2e' : 'unknown',
           line:
@@ -87,5 +94,57 @@ export function extractTests(filePath: string): TestCase[] {
   }
 
   visit(sourceFile);
-  return tests;
+  const parseDiagnostics = (
+    sourceFile as ts.SourceFile & {
+      readonly parseDiagnostics: readonly ts.DiagnosticWithLocation[];
+    }
+  ).parseDiagnostics;
+  const diagnostics: ParserDiagnostic[] = parseDiagnostics.map(
+    (diagnostic) => ({
+      filePath: absolutePath,
+      line:
+        sourceFile.getLineAndCharacterOfPosition(diagnostic.start ?? 0).line +
+        1,
+      message: ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '),
+    }),
+  );
+  return { tests, diagnostics };
+}
+
+function isTestInvocation(call: ts.CallExpression): boolean {
+  if (ts.isIdentifier(call.expression)) {
+    return call.expression.text === 'test' || call.expression.text === 'it';
+  }
+  if (!ts.isCallExpression(call.expression)) return false;
+  const callee = call.expression.expression;
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    (callee.expression.getText() === 'test' ||
+      callee.expression.getText() === 'it') &&
+    callee.name.text === 'each'
+  );
+}
+
+function suiteNames(node: ts.Node): string[] {
+  const names: string[] = [];
+  let current = node.parent;
+  while (current) {
+    if (ts.isCallExpression(current) && isDescribeInvocation(current)) {
+      const name = testName(current);
+      if (name) names.unshift(name);
+    }
+    current = current.parent;
+  }
+  return names;
+}
+
+function isDescribeInvocation(call: ts.CallExpression): boolean {
+  if (ts.isIdentifier(call.expression))
+    return call.expression.text === 'describe';
+  return (
+    ts.isPropertyAccessExpression(call.expression) &&
+    (call.expression.expression.getText() === 'test' ||
+      call.expression.expression.getText() === 'describe') &&
+    call.expression.name.text === 'describe'
+  );
 }

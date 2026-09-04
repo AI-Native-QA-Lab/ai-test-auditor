@@ -38,6 +38,15 @@ export function renderText(result: AuditResult): string {
     }
   }
 
+  if (result.diagnostics && result.diagnostics.length > 0) {
+    lines.push('', 'Parser diagnostics (source syntax only)');
+    for (const diagnostic of result.diagnostics) {
+      lines.push(
+        `${diagnostic.filePath}:${diagnostic.line} [PARSER001] ${diagnostic.message}`,
+      );
+    }
+  }
+
   lines.push(
     '',
     'Static source analysis only: tests were not executed, and runtime behavior was not assessed.',
