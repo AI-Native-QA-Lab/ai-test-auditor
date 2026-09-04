@@ -1,5 +1,9 @@
 # Implementation Record
 
+## 2026-09-04 — v0.3 offline semantic interface
+
+Added versioned semantic-report loading and optional offline/OpenAI/Anthropic provider configuration validation. Providers are configuration-only: v0.3 neither reads credentials nor sends reviewed source over the network. Semantic inferences are advisory and do not alter static findings, classifications, scores, or exit codes.
+
 ## 2026-09-04 — TDD delivery policy
 
 All future features, fixes, refactors, and behavior changes must follow an observed RED-GREEN-REFACTOR cycle. Material changes record the focused RED and GREEN commands alongside full-suite evidence.

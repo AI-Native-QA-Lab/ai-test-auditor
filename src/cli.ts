@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { Command, CommanderError, Option } from 'commander';
 import { auditPath, InputPathError, type ReviewType } from './core/audit.js';
 import { renderJson, renderText } from './reporters.js';
+import { loadSemanticReport } from './core/semantic.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -36,6 +37,10 @@ export async function runCli(
         .default('auto'),
     )
     .option('--config <path>', 'JSON configuration file with an exclude array')
+    .option(
+      '--semantic-report <path>',
+      'versioned offline semantic-report JSON',
+    )
     .addOption(
       new Option('--format <format>', 'output format')
         .choices(['text', 'json'])
@@ -52,14 +57,21 @@ export async function runCli(
           readonly type: ReviewType;
           readonly format: OutputFormat;
           readonly config?: string;
+          readonly semanticReport?: string;
         },
       ) => {
         const result = await auditPath(inputPath, {
           type: options.type,
           configPath: options.config,
         });
+        const semantic = options.semanticReport
+          ? await loadSemanticReport(options.semanticReport)
+          : undefined;
+        const rendered = { ...result, semantic };
         io.stdout(
-          options.format === 'json' ? renderJson(result) : renderText(result),
+          options.format === 'json'
+            ? renderJson(rendered)
+            : renderText(rendered),
         );
         resultCode = result.summary.fake > 0 ? 1 : 0;
       },

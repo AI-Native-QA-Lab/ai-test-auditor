@@ -47,6 +47,18 @@ export function renderText(result: AuditResult): string {
     }
   }
 
+  if (result.semantic) {
+    lines.push(
+      '',
+      `Semantic inferences (${result.semantic.provider}; advisory only)`,
+    );
+    for (const inference of result.semantic.inferences) {
+      lines.push(
+        `${inference.filePath}:${inference.line} [${inference.confidence}] ${inference.summary}`,
+      );
+    }
+  }
+
   lines.push(
     '',
     'Static source analysis only: tests were not executed, and runtime behavior was not assessed.',

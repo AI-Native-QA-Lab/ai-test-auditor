@@ -56,5 +56,6 @@ export interface AuditResult {
   readonly tests: readonly TestCase[];
   readonly findings: readonly Finding[];
   readonly diagnostics?: readonly ParserDiagnostic[];
+  readonly semantic?: import('./semantic.js').SemanticReport;
   readonly summary: AuditSummary;
 }

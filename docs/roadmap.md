@@ -36,6 +36,10 @@
 
 `ata.config.json` may provide `include` and `exclude` arrays of test-file basenames. This is a narrow source-selection control, not a framework runtime configuration.
 
+## v0.3 semantic-review contract
+
+`--semantic-report <path>` loads a version `1` advisory JSON artifact. Default operation is offline. `semanticProvider` configuration accepts `offline`, `openai`, or `anthropic` plus an environment-variable name and optional model; v0.3 validates configuration but never reads keys or makes network calls.
+
 ## Non-commitments
 
 Dates, coverage targets, model providers, mutation engines, supported future frameworks, and gate thresholds are intentionally not committed in this roadmap. They need evidence and maintainer decisions.
