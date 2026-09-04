@@ -1,6 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { extractTestsWithDiagnostics } from './extractor.js';
+import { resolveSemanticProvider } from './semantic.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
 import type {
@@ -106,7 +107,11 @@ async function readConfig(configPath?: string): Promise<{
       await readFile(resolve(configPath), 'utf8'),
     );
     if (!raw || typeof raw !== 'object') throw new Error();
-    const candidate = raw as { include?: unknown; exclude?: unknown };
+    const candidate = raw as {
+      include?: unknown;
+      exclude?: unknown;
+      semanticProvider?: unknown;
+    };
     const include = candidate.include ?? [];
     const exclude = candidate.exclude ?? [];
     if (
@@ -116,6 +121,7 @@ async function readConfig(configPath?: string): Promise<{
       !exclude.every((value) => typeof value === 'string')
     )
       throw new Error();
+    resolveSemanticProvider(candidate.semanticProvider);
     return { include, exclude };
   } catch {
     throw new InputPathError(`Config file is invalid: ${resolve(configPath)}`);
