@@ -1,6 +1,19 @@
-import { describe, expect, it } from 'vitest';
-import { auditTestCases } from '../../src/core/audit';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { auditPath, auditTestCases } from '../../src/core/audit';
 import type { TestCase } from '../../src/core/types';
+
+const temporaryRoots: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryRoots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true })),
+  );
+});
 
 function testCase(name: string, body: string): TestCase {
   return {
@@ -58,6 +71,30 @@ describe('auditTestCases', () => {
       fakeTestRatio: 0,
       trustScore: 100,
       unassessed: 1,
+    });
+  });
+
+  it('turns source parser diagnostics into INVALID audit findings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
+    temporaryRoots.push(root);
+    const filePath = join(root, 'broken.test.ts');
+    await writeFile(filePath, 'const = ;');
+
+    const result = await auditPath(filePath);
+
+    expect(result.findings).toMatchObject([
+      {
+        ruleId: 'PARSER001',
+        classification: 'INVALID',
+        severity: 'WARNING',
+        filePath,
+      },
+    ]);
+    expect(result.summary).toMatchObject({
+      total: 1,
+      assessed: 1,
+      invalid: 1,
+      unassessed: 0,
     });
   });
 });

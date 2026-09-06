@@ -19,16 +19,23 @@ export interface SemanticProviderConfig {
   readonly model?: string;
 }
 
+export class SemanticReportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SemanticReportError';
+  }
+}
+
 export function parseSemanticReport(value: unknown): SemanticReport {
   if (!value || typeof value !== 'object')
-    throw new Error('Semantic report must be an object.');
+    throw new SemanticReportError('Semantic report must be an object.');
   const candidate = value as Record<string, unknown>;
   if (
     candidate.version !== '1' ||
     !isProvider(candidate.provider) ||
     !Array.isArray(candidate.inferences)
   )
-    throw new Error(
+    throw new SemanticReportError(
       'Semantic report must contain version "1", a provider, and inferences.',
     );
   return {
@@ -44,9 +51,8 @@ export async function loadSemanticReport(
   try {
     return parseSemanticReport(JSON.parse(await readFile(path, 'utf8')));
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Semantic report'))
-      throw error;
-    throw new Error(`Semantic report cannot be read: ${path}`);
+    if (error instanceof SemanticReportError) throw error;
+    throw new SemanticReportError(`Semantic report cannot be read: ${path}`);
   }
 }
 
@@ -80,7 +86,9 @@ export function resolveSemanticProvider(
 
 function parseInference(value: unknown): SemanticInference {
   if (!value || typeof value !== 'object')
-    throw new Error('Semantic report inference must be an object.');
+    throw new SemanticReportError(
+      'Semantic report inference must be an object.',
+    );
   const candidate = value as Record<string, unknown>;
   if (
     typeof candidate.filePath !== 'string' ||
@@ -88,7 +96,9 @@ function parseInference(value: unknown): SemanticInference {
     !['LOW', 'MEDIUM', 'HIGH'].includes(candidate.confidence as string) ||
     typeof candidate.summary !== 'string'
   )
-    throw new Error('Semantic report inference has invalid evidence fields.');
+    throw new SemanticReportError(
+      'Semantic report inference has invalid evidence fields.',
+    );
   return {
     filePath: candidate.filePath,
     line: candidate.line,

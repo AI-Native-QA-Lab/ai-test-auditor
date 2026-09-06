@@ -9,6 +9,7 @@ import type {
   AuditSummary,
   Classification,
   Finding,
+  ParserDiagnostic,
   TestCase,
   TestType,
 } from './types.js';
@@ -94,7 +95,50 @@ export async function auditPath(
 
   const result = auditTestCases(tests);
   const diagnostics = outcomes.flatMap((outcome) => outcome.diagnostics);
-  return diagnostics.length === 0 ? result : { ...result, diagnostics };
+  return diagnostics.length === 0
+    ? result
+    : appendParserDiagnostics(result, diagnostics);
+}
+
+function appendParserDiagnostics(
+  result: AuditResult,
+  diagnostics: readonly ParserDiagnostic[],
+): AuditResult {
+  const parserFindings: Finding[] = diagnostics.map((diagnostic) => ({
+    ruleId: 'PARSER001',
+    classification: 'INVALID',
+    severity: 'WARNING',
+    confidence: 'HIGH',
+    filePath: diagnostic.filePath,
+    line: diagnostic.line,
+    message: `PARSER001 could not reliably parse this source: ${diagnostic.message}`,
+    remediation:
+      'Fix the reported source syntax before relying on this audit result.',
+  }));
+  const invalid = result.summary.invalid + parserFindings.length;
+  const assessed = result.summary.assessed + parserFindings.length;
+  const total = result.summary.total + parserFindings.length;
+
+  return {
+    ...result,
+    findings: [...result.findings, ...parserFindings],
+    diagnostics,
+    summary: {
+      ...result.summary,
+      total,
+      assessed,
+      invalid,
+      unassessed: total - assessed,
+      fakeTestRatio:
+        assessed === 0
+          ? 0
+          : Number(((result.summary.fake / assessed) * 100).toFixed(2)),
+      trustScore: Math.max(
+        0,
+        result.summary.trustScore - parserFindings.length * 10,
+      ),
+    },
+  };
 }
 
 async function readConfig(configPath?: string): Promise<{

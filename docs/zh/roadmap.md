@@ -38,7 +38,7 @@
 
 ## v0.3 语义审计契约
 
-`--semantic-report <path>` 加载 version `1` 的建议性 JSON 产物。默认操作完全离线。`semanticProvider` 配置接受 `offline`、`openai` 或 `anthropic`，以及环境变量名和可选模型；v0.3 只校验配置，绝不读取 Key 或发起网络调用。
+`--semantic-report <path>` 加载 version `1` 的建议性 JSON 产物。默认操作完全离线。`semanticProvider` 配置接受 `offline`、`openai` 或 `anthropic`，以及环境变量名和可选模型；v0.3 只校验配置，绝不读取 Key 或发起网络调用。[`test-quality-audit/evals/semantic-report-v1.json`](../../test-quality-audit/evals/semantic-report-v1.json) 是该契约的版本化接受/拒绝评估语料。
 
 ## v0.4 Mutation 证据契约
 

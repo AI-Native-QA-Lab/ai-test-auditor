@@ -38,7 +38,7 @@
 
 ## v0.3 semantic-review contract
 
-`--semantic-report <path>` loads a version `1` advisory JSON artifact. Default operation is offline. `semanticProvider` configuration accepts `offline`, `openai`, or `anthropic` plus an environment-variable name and optional model; v0.3 validates configuration but never reads keys or makes network calls.
+`--semantic-report <path>` loads a version `1` advisory JSON artifact. Default operation is offline. `semanticProvider` configuration accepts `offline`, `openai`, or `anthropic` plus an environment-variable name and optional model; v0.3 validates configuration but never reads keys or makes network calls. [`test-quality-audit/evals/semantic-report-v1.json`](../test-quality-audit/evals/semantic-report-v1.json) is the versioned acceptance/rejection corpus for this contract.
 
 ## v0.4 mutation-evidence contract
 

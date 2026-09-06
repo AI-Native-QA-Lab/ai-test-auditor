@@ -15,7 +15,8 @@ export function renderText(result: AuditResult): string {
   const lines = [
     'AI Test Auditor',
     '',
-    `Tests: ${summary.total} total, ${summary.assessed} assessed`,
+    `Audit items: ${summary.total} total, ${summary.assessed} assessed`,
+    `Extracted test cases: ${result.tests.length}`,
     `Classifications: FAKE ${summary.fake} | WEAK ${summary.weak} | INVALID ${summary.invalid} | UNASSESSED ${summary.unassessed}`,
     `Fake Test Ratio: ${summary.fakeTestRatio.toFixed(2)}% (${summary.fake} / ${summary.assessed} assessed)`,
     `Trust Score: ${summary.trustScore}/100 (100 - ${critical} critical x 25 - ${warning} warning x 10)`,

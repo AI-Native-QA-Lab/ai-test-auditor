@@ -19,7 +19,7 @@ The governing question is simple: **if production behavior is wrong, can this te
 - Ships a standalone, bilingual `test-quality-audit` Skill and evidence-bounded prompts.
 - Loads optional, versioned mutation evidence through `--mutation-report` without running a mutation tool.
 
-## What v0.1 does not do
+## What the tool does not do
 
 It does **not** execute tests, inspect runtime behavior, invoke an LLM, run mutation testing, calculate coverage, validate imports/fixtures, or mark an unflagged test `STRONG`. An unflagged test is `UNASSESSED`.
 
@@ -76,7 +76,7 @@ The installed package exposes the same command as `ata review [path]`; a source 
 | ---- | ------------------------------------------------------------------------------------- |
 | `0`  | No deterministic `FAKE` finding was emitted. This is not proof that tests are strong. |
 | `1`  | At least one deterministic `FAKE` finding was emitted.                                |
-| `2`  | The command or input path is invalid.                                                 |
+| `2`  | The command, input path, or selected source is invalid (including `PARSER001`).       |
 
 ## Example
 
