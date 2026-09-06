@@ -69,6 +69,37 @@ describe('reporters', () => {
     expect(output).toContain('not evidence that they are STRONG');
   });
 
+  it('distinguishes parser audit items from extracted test cases', () => {
+    const output = renderText({
+      tests: [],
+      findings: [
+        {
+          ruleId: 'PARSER001',
+          severity: 'WARNING',
+          classification: 'INVALID',
+          confidence: 'HIGH',
+          filePath: '/repo/broken.test.ts',
+          line: 1,
+          message: 'Source syntax is invalid.',
+          remediation: 'Fix the syntax.',
+        },
+      ],
+      summary: {
+        total: 1,
+        assessed: 1,
+        fake: 0,
+        weak: 0,
+        invalid: 1,
+        unassessed: 0,
+        fakeTestRatio: 0,
+        trustScore: 90,
+      },
+    });
+
+    expect(output).toContain('Audit items: 1 total, 1 assessed');
+    expect(output).toContain('Extracted test cases: 0');
+  });
+
   it('renders the complete audit result as parseable JSON', () => {
     expect(JSON.parse(renderJson(result))).toEqual(result);
   });

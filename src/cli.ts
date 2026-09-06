@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { Command, CommanderError, Option } from 'commander';
 import { auditPath, InputPathError, type ReviewType } from './core/audit.js';
 import { renderJson, renderText } from './reporters.js';
-import { loadSemanticReport } from './core/semantic.js';
+import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
 
 export interface CliIo {
@@ -82,7 +82,8 @@ export async function runCli(
             ? renderJson(rendered)
             : renderText(rendered),
         );
-        resultCode = result.summary.fake > 0 ? 1 : 0;
+        resultCode =
+          result.summary.invalid > 0 ? 2 : result.summary.fake > 0 ? 1 : 0;
       },
     );
 
@@ -101,6 +102,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof SemanticReportError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -111,7 +116,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.1.0')
+    .version('0.4.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

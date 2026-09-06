@@ -22,7 +22,7 @@
 - 内置独立的中英文 `test-quality-audit` Skill 与有证据边界的 Prompt。
 - 通过 `--mutation-report` 读取可选、版本化的变异证据，但不运行 mutation 工具。
 
-## v0.1 不做什么
+## 工具不做什么
 
 它**不会**执行测试、检查运行时行为、调用 LLM、运行 Mutation Testing、计算覆盖率、校验 import / fixture，也不会将未命中的测试标为 `STRONG`。未命中的测试统一是 `UNASSESSED`。
 
@@ -77,7 +77,7 @@ node dist/cli.js review benchmarks --format json
 | ---- | ---------------------------------------------------- |
 | `0`  | 未输出确定性的 `FAKE` 发现项；这不表示测试已经很强。 |
 | `1`  | 至少输出一条确定性的 `FAKE` 发现项。                 |
-| `2`  | 命令或输入路径无效。                                 |
+| `2`  | 命令、输入路径或选中的源码无效（包括 `PARSER001`）。 |
 
 ## 规则与边界
 

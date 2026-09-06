@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   parseSemanticReport,
@@ -43,5 +45,44 @@ describe('semantic report contract', () => {
     expect(() =>
       resolveSemanticProvider({ kind: 'anthropic', apiKeyEnv: '' }),
     ).toThrow('apiKeyEnv');
+  });
+
+  it('validates the versioned semantic evaluation corpus', async () => {
+    const corpus = JSON.parse(
+      await readFile(
+        new URL(
+          '../../test-quality-audit/evals/semantic-report-v1.json',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    ) as {
+      readonly version: string;
+      readonly cases: readonly {
+        readonly accepted: boolean;
+        readonly report: unknown;
+      }[];
+    };
+
+    expect(corpus.version).toBe('1');
+    expect(corpus.cases.length).toBeGreaterThan(1);
+    expect(
+      corpus.cases
+        .filter((testCase) => testCase.accepted)
+        .map(
+          (testCase) =>
+            (testCase.report as { readonly provider?: unknown }).provider,
+        )
+        .sort(),
+    ).toEqual(['anthropic', 'offline', 'openai']);
+    for (const testCase of corpus.cases) {
+      if (testCase.accepted) {
+        expect(() => parseSemanticReport(testCase.report)).not.toThrow();
+      } else {
+        expect(() => parseSemanticReport(testCase.report)).toThrow(
+          'Semantic report',
+        );
+      }
+    }
   });
 });

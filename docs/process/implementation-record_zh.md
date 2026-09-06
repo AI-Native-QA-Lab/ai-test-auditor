@@ -8,7 +8,7 @@
 
 TDD 证据：`npx vitest run tests/core/mutation.test.ts` 先因 `src/core/mutation.ts` 不存在而失败；加入严格 parser 和 loader 后，4 个测试通过。随后 `npx vitest run tests/cli.test.ts tests/reporters.test.ts` 因缺少 CLI 选项和报告段而失败；接入 mutation 附加和输入错误处理后，聚焦套件通过。
 
-最终验证：`npm test` 通过 9 个文件、61 个测试；`npm run lint`、`npm run typecheck`、`npm run format:check` 和 `npm run build` 均通过。`node dist/cli.js review benchmarks --mutation-report /private/tmp/ata-v0.4-mutation-report.json --format json` 输出了 `mutation.meetsThreshold: false`，但由于基准原有的静态 `FAKE` 发现保持不变，仍按预期返回退出码 `1`。
+初始 v0.4 验证：`npm test` 通过 9 个文件、61 个测试；`npm run lint`、`npm run typecheck`、`npm run format:check` 和 `npm run build` 均通过。`node dist/cli.js review benchmarks --mutation-report /private/tmp/ata-v0.4-mutation-report.json --format json` 输出了 `mutation.meetsThreshold: false`，但由于基准原有的静态 `FAKE` 发现保持不变，仍按预期返回退出码 `1`。
 
 测试补强：新增不支持的版本、两位小数分数取整、格式错误和缺失文件、达标/未达标渲染、携带 mutation 证据的静态 `FAKE` 退出码，以及若被执行将创建标记文件的已记录命令等契约用例。聚焦命令 `npx vitest run tests/core/mutation.test.ts tests/cli.test.ts tests/reporters.test.ts` 通过 28 个测试；标记文件未被创建。
 
@@ -22,7 +22,19 @@ TDD 证据：`npx vitest run tests/core/mutation.test.ts` 先因 `src/core/mutat
 
 ## 2026-09-04 — v0.2 提取范围
 
-v0.2 增加嵌套套件标签、参数化 Jest/Vitest 测试提取、解析诊断和可选 basename 排除配置。诊断只报告 TypeScript 源码解析器观察结果，不代表运行时有效性。
+v0.2 增加嵌套套件标签、参数化 Jest/Vitest 测试提取、解析诊断和可选 basename 排除配置。诊断会转换为 `PARSER001` `INVALID` 发现项，并使 CLI 返回退出码 `2`；它仍不代表运行时有效性。
+
+## 2026-09-05 — v0.1–v0.4 审查修复
+
+通过 TDD 的 RED/GREEN 证据修复三项契约缺口：格式错误的 semantic report 现在返回 CLI 退出码 `2`；parser 诊断现在生成 `PARSER001` `INVALID` 发现项，无效源码审计返回退出码 `2`；包元数据与 `ata --version` 统一报告 `0.4.0`。新增版本化 semantic 接受/拒绝语料库 `test-quality-audit/evals/semantic-report-v1.json`。
+
+修复后验证：`npm test` 通过 10 个文件、76 个测试；`npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build` 和 `git diff --check` 均通过。
+
+后续 TDD 修复：`npx vitest run tests/reporters.test.ts` 首先失败，因为 parser 诊断被呈现成提取出的测试。随后将报告契约改为把 `summary.total` 标记为审计条目，并通过 `result.tests.length` 显示提取出的测试数；聚焦 reporter 测试套件通过。
+
+双语公开标记 guard：`npx vitest run tests/docs-contract.test.ts` 首先失败，因为尚不存在文档校验器。新增检查会对比中英文的 mutation/parser/退出码公共标记、规则 ID/分类和 README 退出码行；它不声称能够证明全部正文翻译等价。聚焦测试和全量测试均通过。
+
+审查后续修复：semantic corpus 测试先因成功用例只覆盖 `offline` 而失败；现在要求并验证 `offline`、`openai` 和 `anthropic`。需求文档改用“当前含义”，不再错误标注为 v0.1 行为；已完成的 v0.4 计划也记录了当前 `INVALID` 优先的退出码顺序。
 
 ## 2026-09-03 — 许可证决策
 
