@@ -6,7 +6,7 @@ Added a version `1` mutation-report adapter behind `--mutation-report`. Evidence
 
 TDD evidence: `npx vitest run tests/core/mutation.test.ts` first failed because `src/core/mutation.ts` did not exist, then passed with 4 tests after the strict parser and loader were added. `npx vitest run tests/cli.test.ts tests/reporters.test.ts` then failed for the absent CLI option and reporter section, then the focused suite passed with the mutation attachment and input-error handling.
 
-Final validation: `npm test` passed 9 files and 61 tests; `npm run lint`, `npm run typecheck`, `npm run format:check`, and `npm run build` passed. `node dist/cli.js review benchmarks --mutation-report /private/tmp/ata-v0.4-mutation-report.json --format json` emitted `mutation.meetsThreshold: false` and retained the benchmark's expected exit code `1` because its pre-existing static `FAKE` findings remain unchanged.
+Initial v0.4 validation: `npm test` passed 9 files and 61 tests; `npm run lint`, `npm run typecheck`, `npm run format:check`, and `npm run build` passed. `node dist/cli.js review benchmarks --mutation-report /private/tmp/ata-v0.4-mutation-report.json --format json` emitted `mutation.meetsThreshold: false` and retained the benchmark's expected exit code `1` because its pre-existing static `FAKE` findings remain unchanged.
 
 Coverage strengthening: added contract cases for unsupported versions, two-decimal score rounding, malformed and missing files, met and below-threshold rendering, a static `FAKE` exit code with mutation evidence, and a recorded command that would create a marker if executed. The focused command `npx vitest run tests/core/mutation.test.ts tests/cli.test.ts tests/reporters.test.ts` passed 28 tests; the marker was not created.
 
@@ -20,7 +20,19 @@ All future features, fixes, refactors, and behavior changes must follow an obser
 
 ## 2026-09-04 — v0.2 extraction scope
 
-v0.2 adds nested suite labels, parameterized Jest/Vitest test extraction, parser diagnostics, and an optional basename exclusion configuration. Diagnostics only report TypeScript source-parser observations; they do not establish runtime validity.
+v0.2 adds nested suite labels, parameterized Jest/Vitest test extraction, parser diagnostics, and an optional basename exclusion configuration. Diagnostics are surfaced as `PARSER001` `INVALID` findings and make the CLI return code `2`; they still do not establish runtime validity.
+
+## 2026-09-05 — v0.1–v0.4 review corrections
+
+Observed RED and fixed three contract gaps: malformed semantic reports now return CLI code `2`; parser diagnostics now become `PARSER001` `INVALID` findings and invalid-source reviews return code `2`; package metadata and `ata --version` now report `0.4.0`. Added the versioned semantic acceptance/rejection corpus at `test-quality-audit/evals/semantic-report-v1.json`.
+
+Validation after the corrections: `npm test` passed 10 files and 76 tests; `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm run build`, and `git diff --check` all passed.
+
+Follow-up TDD correction: `npx vitest run tests/reporters.test.ts` first failed because parser diagnostics were presented as extracted tests. After changing the report contract to label `summary.total` as audit items and expose `result.tests.length` as extracted test cases, the focused reporter suite passed.
+
+Bilingual public-marker guard: `npx vitest run tests/docs-contract.test.ts` first failed because no document validator existed. The resulting check compares public mutation/parser/exit-code markers, rule IDs/classifications, and README exit-code rows in English and Chinese; it does not claim to prove full prose translation equivalence. The focused test and full suite pass.
+
+Review follow-up: the semantic corpus test first failed because accepted cases covered only `offline`; it now requires and validates `offline`, `openai`, and `anthropic`. Requirements now use “Current meaning” rather than a false v0.1 claim, and the completed v0.4 plan records the current `INVALID`-first exit-code precedence.
 
 ## 2026-09-03 — License decision
 

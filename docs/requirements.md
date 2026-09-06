@@ -36,20 +36,20 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 
 ## Classification contract
 
-| Classification | v0.1 meaning                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `FAKE`         | Deterministic source evidence indicates no meaningful regression protection for the checked pattern.         |
-| `WEAK`         | A deterministic, limited assertion pattern was found; context may make it sufficient, so review is required. |
-| `INVALID`      | Reserved for future executable or parser validation; v0.1 static rules do not emit it.                       |
-| `UNASSESSED`   | No current deterministic rule applied. It is not a quality endorsement.                                      |
-| `STRONG`       | Reserved future classification; v0.1 never emits it.                                                         |
+| Classification | Current meaning                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `FAKE`         | Deterministic source evidence indicates no meaningful regression protection for the checked pattern.             |
+| `WEAK`         | A deterministic, limited assertion pattern was found; context may make it sufficient, so review is required.     |
+| `INVALID`      | A selected test source has a parser diagnostic (`PARSER001`); this is source-syntax evidence, not runtime proof. |
+| `UNASSESSED`   | No current deterministic rule applied. It is not a quality endorsement.                                          |
+| `STRONG`       | Reserved future classification; v0.1 never emits it.                                                             |
 
 ## Acceptance criteria
 
 - A supported file or directory is scanned without executing its source.
 - Each emitted finding carries rule ID, classification, severity, confidence, file path, line, message, and remediation.
 - The text report is a human-readable projection of the audit result; JSON contains the complete structured public result contract.
-- Exit codes are `0` for no `FAKE`, `1` for one or more `FAKE`, and `2` for invalid command/input.
+- Exit codes are `0` for no `FAKE`, `1` for one or more `FAKE`, and `2` for invalid command, input, semantic/mutation report, or selected source syntax.
 - The README, Chinese README, rule catalog, architecture, roadmap, development guide, process record, and Skill assets describe only implemented behavior.
 
 ## Success signals and limits

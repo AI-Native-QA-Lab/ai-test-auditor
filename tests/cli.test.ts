@@ -46,6 +46,13 @@ async function invoke(args: string[]): Promise<{
 }
 
 describe('ata review', () => {
+  it('reports the current package release version', async () => {
+    const invocation = await invoke(['--version']);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stdout).toContain('0.4.0');
+  });
+
   it('returns 1 and JSON when a deterministic FAKE finding exists', async () => {
     const root = await fixture(
       "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
@@ -106,6 +113,18 @@ describe('ata review', () => {
 
     expect(invocation.code).toBe(2);
     expect(invocation.stderr).toContain('Input path');
+  });
+
+  it('returns 2 with a PARSER001 finding for invalid test source', async () => {
+    const root = await fixture('const = ;');
+
+    const invocation = await invoke(['review', root, '--format', 'json']);
+
+    expect(invocation.code).toBe(2);
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      summary: { invalid: 1 },
+      findings: [{ ruleId: 'PARSER001', classification: 'INVALID' }],
+    });
   });
 
   it('documents all exit codes in review help', async () => {
@@ -190,6 +209,27 @@ describe('ata review', () => {
       },
     });
   });
+
+  it.each(['{', ''])(
+    'returns 2 for an invalid semantic report (%j)',
+    async (source) => {
+      const root = await fixture(
+        "import { expect, test } from 'vitest'; test('ok', () => { expect(value).toBe('ok'); });",
+      );
+      const report = join(root, 'semantic.json');
+      if (source) await writeFile(report, source);
+
+      const invocation = await invoke([
+        'review',
+        root,
+        '--semantic-report',
+        report,
+      ]);
+
+      expect(invocation.code).toBe(2);
+      expect(invocation.stderr).toContain('Semantic report');
+    },
+  );
 
   it('attaches mutation evidence without changing static exit semantics', async () => {
     const root = await fixture(

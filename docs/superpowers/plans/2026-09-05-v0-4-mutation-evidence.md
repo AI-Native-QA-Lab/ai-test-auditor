@@ -17,7 +17,7 @@
 - Create: `src/core/mutation.ts`
 - Create: `tests/core/mutation.test.ts`
 
-- [ ] **Step 1: Write the failing parser tests**
+- [x] **Step 1: Write the failing parser tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -73,13 +73,13 @@ describe('mutation evidence contract', () => {
 });
 ```
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `npx vitest run tests/core/mutation.test.ts`
 
 Expected: FAIL because `src/core/mutation.ts` does not exist.
 
-- [ ] **Step 3: Implement the smallest strict parser and loader**
+- [x] **Step 3: Implement the smallest strict parser and loader**
 
 ```ts
 export interface MutationReport {
@@ -183,7 +183,7 @@ function roundScore(killed: number, total: number): number {
 
 `score` must equal `(killed / totalMutants) * 100` after rounding to two decimal places. The threshold status is derived with `score >= minimumScore`; it is not an error when false.
 
-- [ ] **Step 4: Confirm GREEN**
+- [x] **Step 4: Confirm GREEN**
 
 Run: `npx vitest run tests/core/mutation.test.ts`
 
@@ -199,7 +199,7 @@ Expected: 2 tests pass.
 - Modify: `tests/cli.test.ts`
 - Modify: `tests/reporters.test.ts`
 
-- [ ] **Step 1: Write failing public-boundary tests**
+- [x] **Step 1: Write failing public-boundary tests**
 
 Add a CLI test that writes a valid report, invokes:
 
@@ -215,17 +215,17 @@ mutation: { engine: 'stryker', meetsThreshold: true, result: { score: 80 } }
 
 Add a second CLI test with `{}` in the report and assert exit code `2` with `Mutation report` in stderr. Add a text-reporter test asserting `Mutation evidence (advisory only)` and `Threshold: met`.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 Run: `npx vitest run tests/cli.test.ts tests/reporters.test.ts`
 
 Expected: FAIL because `--mutation-report` and `result.mutation` do not exist.
 
-- [ ] **Step 3: Implement the narrow CLI attachment and presentation**
+- [x] **Step 3: Implement the narrow CLI attachment and presentation**
 
-Add `mutation?: import('./mutation.js').MutationReport` to `AuditResult`. Add Commander option `--mutation-report <path>`, call `loadMutationReport`, and spread it into rendered output. Keep `resultCode = result.summary.fake > 0 ? 1 : 0` unchanged. Render an advisory-only mutation section containing engine, command, score/counts, threshold source, and met/below status.
+Add `mutation?: import('./mutation.js').MutationReport` to `AuditResult`. Add Commander option `--mutation-report <path>`, call `loadMutationReport`, and spread it into rendered output. Preserve the result-code precedence: `INVALID` returns `2`; otherwise a `FAKE` finding returns `1`. Render an advisory-only mutation section containing engine, command, score/counts, threshold source, and met/below status.
 
-- [ ] **Step 4: Confirm GREEN**
+- [x] **Step 4: Confirm GREEN**
 
 Run: `npx vitest run tests/cli.test.ts tests/reporters.test.ts`
 
@@ -236,7 +236,7 @@ Expected: all CLI and reporter tests pass, including invalid artifact exit code 
 **Files:**
 
 - Modify: `README.md`
-- Modify: `README.zh-CN.md`
+- Modify: `README_ZH.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/zh/roadmap.md`
 - Modify: `docs/architecture.md`
@@ -244,17 +244,17 @@ Expected: all CLI and reporter tests pass, including invalid artifact exit code 
 - Modify: `docs/process/implementation-record.md`
 - Modify: `docs/process/implementation-record_zh.md`
 
-- [ ] **Step 1: Document the exact command and schema**
+- [x] **Step 1: Document the exact command and schema**
 
 Add the version `1` example from the approved design to both READMEs and roadmap files, followed by this boundary statement in English and equivalent Chinese prose: "The recorded command is provenance, not an instruction: AI Test Auditor never executes it. A below-threshold result is valid advisory evidence and never changes the process exit code."
 
-- [ ] **Step 2: Update architecture and process evidence**
+- [x] **Step 2: Update architecture and process evidence**
 
 Extend both Mermaid flows with `Mutation report --> Mutation adapter --> Audit result`. Add dated process entries that list the observed RED command `npx vitest run tests/core/mutation.test.ts`, each focused GREEN command, and the final validation commands. State explicitly that no mutation engine was run by AI Test Auditor.
 
-- [ ] **Step 3: Check bilingual parity and formatting**
+- [x] **Step 3: Check bilingual parity and formatting**
 
-Run: `git diff --check && rg -n 'mutation-report|变异报告|mutation evidence|变异证据' README.md README.zh-CN.md docs`
+Run: `git diff --check && rg -n 'mutation-report|变异报告|mutation evidence|变异证据' README.md README_ZH.md docs`
 
 Expected: no whitespace errors and both language trees document the public seam.
 
@@ -264,7 +264,7 @@ Expected: no whitespace errors and both language trees document the public seam.
 
 - Verify only.
 
-- [ ] **Step 1: Run all project gates**
+- [x] **Step 1: Run all project gates**
 
 Run:
 
@@ -280,7 +280,7 @@ git diff --check
 
 Expected: all checks exit successfully except the benchmark command may return `1` only when it reports deterministic `FAKE` findings; verify its JSON payload and report that expected semantic separately.
 
-- [ ] **Step 2: Inspect scope**
+- [x] **Step 2: Inspect scope**
 
 Run: `git status --short && git diff --stat`
 
