@@ -1,6 +1,12 @@
 import * as ts from 'typescript';
 import type { Finding, TestCase } from '../core/types.js';
-import { assertions, finding, sourceFileFor, visitNodes } from './utils.js';
+import {
+  assertions,
+  finding,
+  hasOnlyZeroArgumentMatchers,
+  sourceFileFor,
+  visitNodes,
+} from './utils.js';
 
 export function evaluateE2eRules(testCase: TestCase): Finding[] {
   if (testCase.type !== 'e2e') return [];
@@ -38,6 +44,21 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
         'HIGH',
         'E2E002 verifies only page URL state. Static analysis cannot determine whether navigation alone proves the user journey.',
         'Add assertions for visible user-facing outcomes or state changes. Static analysis cannot judge every meaningful journey outcome.',
+      ),
+    );
+  }
+
+  if (hasOnlyZeroArgumentMatchers(sourceFile, ['toBeVisible'])) {
+    findings.push(
+      finding(
+        testCase,
+        testAssertions[0]!.matcher,
+        'E2E003',
+        'WEAK',
+        'WARNING',
+        'HIGH',
+        'E2E003 verifies only element visibility. Static analysis cannot determine whether visible UI proves the user journey outcome.',
+        'Add assertions for the user-visible value, state change, or completed outcome. Static analysis cannot judge every meaningful journey outcome.',
       ),
     );
   }

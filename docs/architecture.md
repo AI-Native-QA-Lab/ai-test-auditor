@@ -13,7 +13,8 @@
 
 ```mermaid
 flowchart LR
-  Input[Test file or directory] --> Scanner[Scanner]
+  Input[Test file or directory] --> Selection[Optional changed-file selection]
+  Selection --> Scanner[Scanner]
   Scanner --> Extractor[TypeScript AST extractor]
   Extractor --> Cases[TestCase records]
   Cases --> Rules[Deterministic rule engine]
@@ -37,6 +38,7 @@ flowchart LR
 | `extractor` | Uses TypeScript AST to extract direct `test` / `it` callbacks and their source location. | No module resolution or callback execution. |
 | `rules/*` | Produces deterministic findings from a single `TestCase`. | Does not infer product intent. |
 | `audit` | Aggregates rules, per-test classifications, FTR, and score. | Does not generate `STRONG`. |
+| `changed-files` | Selects current changed test files from a verified local commit. | Does not fetch, execute source, or infer test relevance. |
 | `mutation` | Validates an opt-in versioned mutation artifact and derives threshold status. | Does not run a mutation command or change static audit semantics. |
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
@@ -51,4 +53,4 @@ flowchart LR
 
 ## Extensibility
 
-Future work can add adapters for semantic review, mutation evidence, changed-file selection, and CI annotations behind distinct contracts. They must report their evidence source and must not upgrade an `UNASSESSED` deterministic result to `STRONG` without explicit, separately documented evidence.
+Future work can add adapters for CI annotations behind distinct contracts. They must report their evidence source and must not upgrade an `UNASSESSED` deterministic result to `STRONG` without explicit, separately documented evidence.

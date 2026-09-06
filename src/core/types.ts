@@ -59,4 +59,12 @@ export interface AuditResult {
   readonly semantic?: import('./semantic.js').SemanticReport;
   readonly mutation?: import('./mutation.js').MutationReport;
   readonly summary: AuditSummary;
+  readonly selection?: FileSelection;
+}
+
+export interface FileSelection {
+  readonly mode: 'all' | 'changed-since';
+  readonly requestedBaseRef?: string;
+  readonly baseCommit?: string;
+  readonly files: readonly string[];
 }

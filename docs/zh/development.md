@@ -29,6 +29,7 @@ npm run typecheck
 npm run format:check
 npm run build
 node dist/cli.js review benchmarks --format json
+node dist/cli.js review . --changed-since HEAD
 git diff --check
 ```
 
