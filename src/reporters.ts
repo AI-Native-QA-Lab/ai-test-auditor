@@ -22,6 +22,12 @@ export function renderText(result: AuditResult): string {
     `Trust Score: ${summary.trustScore}/100 (100 - ${critical} critical x 25 - ${warning} warning x 10)`,
     '',
   ];
+  if (result.selection) {
+    lines.push(
+      '',
+      `File selection: ${result.selection.mode} (${result.selection.files.length} changed candidates)`,
+    );
+  }
 
   if (result.findings.length === 0) {
     lines.push(

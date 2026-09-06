@@ -16,7 +16,7 @@
 | 0.2   | More framework extraction and configuration, including explicit parser diagnostics. | Fixture corpus and compatibility matrix.                                              |
 | 0.3   | Optional semantic review interface.                                                 | Versioned prompt/schema, disclosed model and evidence limits, evaluation set.         |
 | 0.4   | Delivered: offline mutation-evidence adapter.                                       | Versioned schema, command/threshold provenance, parser and CLI contracts.             |
-| 0.5   | Unit/API/E2E rule expansion and changed-file selection.                             | Rule catalog, false-positive analysis, integration tests.                             |
+| 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                  | Rule catalog, false-positive analysis, integration tests.                             |
 | 1.0   | CI/PR quality-gate integrations.                                                    | Opt-in policy configuration, end-to-end CI samples, and documented failure semantics. |
 
 ## Sequencing principles

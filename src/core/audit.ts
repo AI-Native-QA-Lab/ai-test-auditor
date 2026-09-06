@@ -4,6 +4,7 @@ import { extractTestsWithDiagnostics } from './extractor.js';
 import { resolveSemanticProvider } from './semantic.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
+import { selectChangedFiles } from './changed-files.js';
 import type {
   AuditResult,
   AuditSummary,
@@ -18,6 +19,7 @@ export type ReviewType = Exclude<TestType, 'unknown'> | 'auto';
 export interface AuditOptions {
   readonly type?: ReviewType;
   readonly configPath?: string;
+  readonly changedSince?: string;
 }
 
 const supportedTestFile = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
@@ -79,7 +81,18 @@ export async function auditPath(
     typeof options === 'string'
       ? { include: [], exclude: [] }
       : await readConfig(options.configPath);
-  const selectedFiles = files.filter((filePath) => {
+  const changedSince =
+    typeof options === 'string' ? undefined : options.changedSince;
+  const selection = changedSince
+    ? await selectChangedFiles(
+        inputStats.isDirectory() ? absolutePath : resolve(absolutePath, '..'),
+        changedSince,
+      )
+    : undefined;
+  const candidateFiles = selection
+    ? files.filter((file) => selection.files.includes(file))
+    : files;
+  const selectedFiles = candidateFiles.filter((filePath) => {
     const name = basename(filePath);
     return (
       (config.include.length === 0 || config.include.includes(name)) &&
@@ -95,9 +108,16 @@ export async function auditPath(
 
   const result = auditTestCases(tests);
   const diagnostics = outcomes.flatMap((outcome) => outcome.diagnostics);
-  return diagnostics.length === 0
-    ? result
-    : appendParserDiagnostics(result, diagnostics);
+  const withDiagnostics =
+    diagnostics.length === 0
+      ? result
+      : appendParserDiagnostics(result, diagnostics);
+  return selection
+    ? {
+        ...withDiagnostics,
+        selection: { ...selection, files: selectedFiles.sort() },
+      }
+    : withDiagnostics;
 }
 
 function appendParserDiagnostics(

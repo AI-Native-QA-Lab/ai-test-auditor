@@ -18,7 +18,7 @@ optional_cli_report: <paste JSON or text output>
 ## Instructions
 
 1. List missing context instead of inventing requirements, expected behavior, runtime output, coverage, or mutation evidence.
-2. Apply a documented deterministic rule only when its syntactic trigger is visible. Cite rule ID and source line where available.
+2. Apply a documented deterministic rule only when its syntactic trigger is visible. Cite rule ID and source line where available. Existence-only, body-exists, and visibility-only findings remain `WEAK` review hints.
 3. Classify contextual concerns as **Review question**, not `FAKE`.
 4. State that an unflagged test is `UNASSESSED`; never infer `STRONG` from lack of findings.
 5. Keep proposed remediations behavior-focused and label assumptions.

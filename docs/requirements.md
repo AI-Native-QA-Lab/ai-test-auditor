@@ -21,10 +21,11 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 
 ## In scope
 
-- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json`.
+- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>]`.
 - AST extraction from supported JS, TS, and TSX test-source conventions.
 - Deterministic rules in the public catalog.
 - Text and JSON reports, source locations, FTR, and a transparent heuristic score.
+- Changed-file selection against a local commit, limited to current supported test files; it does not infer production-code-to-test relevance.
 - English-first public documentation, Chinese translation, benchmark fixtures, CI, and standalone Skill assets.
 
 ## Out of scope

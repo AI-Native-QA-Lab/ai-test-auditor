@@ -18,6 +18,7 @@ The governing question is simple: **if production behavior is wrong, can this te
 - Produces human-readable or JSON output through `ata review`.
 - Ships a standalone, bilingual `test-quality-audit` Skill and evidence-bounded prompts.
 - Loads optional, versioned mutation evidence through `--mutation-report` without running a mutation tool.
+- Selects current supported test files changed since a local commit with `--changed-since <ref>`.
 
 ## What the tool does not do
 
@@ -66,6 +67,7 @@ Review one file, force a test category, or request machine-readable output:
 ```bash
 node dist/cli.js review tests/checkout.e2e.ts --type e2e
 node dist/cli.js review benchmarks --format json
+node dist/cli.js review . --changed-since HEAD~1
 ```
 
 The installed package exposes the same command as `ata review [path]`; a source checkout can use `node dist/cli.js review [path]`. Both default to the current directory and never import or execute target source.
@@ -100,9 +102,12 @@ test('total', () => {
 | UT003  | FAKE           | An expression is asserted against the identical expression.            |
 | UT008  | FAKE           | A caught error is only swallowed or logged.                            |
 | UT011  | FAKE           | Both sides call the same callee with structurally identical arguments. |
+| UT004  | WEAK           | Every assertion only checks defined/truthy existence.                  |
 | API001 | WEAK           | An API test asserts only `response.status` / `statusCode`.             |
+| API002 | WEAK           | An API test only checks `response.body` / `response.data` existence.   |
 | E2E001 | FAKE           | A Playwright test has no `expect` assertion.                           |
 | E2E002 | WEAK           | A Playwright test asserts only the URL.                                |
+| E2E003 | WEAK           | A Playwright test asserts only visibility.                             |
 | E2E004 | WEAK           | A Playwright test uses numeric `page.waitForTimeout`.                  |
 
 Rules deliberately trade breadth for explainable, source-backed evidence. Read the [full rule catalog](./docs/rules.md) before treating an output as a release decision.

@@ -50,7 +50,7 @@ describe('ata review', () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.4.0');
+    expect(invocation.stdout).toContain('0.5.0');
   });
 
   it('returns 1 and JSON when a deterministic FAKE finding exists', async () => {

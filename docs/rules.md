@@ -13,9 +13,12 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 | UT003     | FAKE    | CRITICAL | The actual and expected expressions have identical TypeScript-AST structural text, preserving literal content. | That semantically equivalent but differently written expressions are safe.  |
 | UT008     | FAKE    | CRITICAL | A `catch` block is empty or only logs to `console`.                                                            | That every catch with additional work handles errors correctly.             |
 | UT011     | FAKE    | CRITICAL | Both sides of a matcher call the same callee with structurally identical arguments.                            | That all two-call comparisons are ineffective in every context.             |
+| UT004     | WEAK    | WARNING  | Every direct assertion uses zero-argument `toBeDefined` or `toBeTruthy`.                                       | That existence or truthiness is never the intended unit contract.           |
 | API001    | WEAK    | WARNING  | Every recognized assertion targets `response.status` or `response.statusCode`.                                 | That status-only is always inadequate for the endpoint.                     |
+| API002    | WEAK    | WARNING  | Every direct assertion checks only `response.body` or `response.data` with an existence matcher.               | That body/data existence is always inadequate for the endpoint.             |
 | E2E001    | FAKE    | CRITICAL | Playwright callback has no recognized `expect` call.                                                           | That an action-only journey cannot be useful for setup or exploration.      |
 | E2E002    | WEAK    | WARNING  | Every recognized Playwright assertion uses `toHaveURL`.                                                        | That URL-only can never be an adequate journey outcome.                     |
+| E2E003    | WEAK    | WARNING  | Every direct assertion uses zero-argument `toBeVisible`.                                                       | That visibility is never the intended journey outcome.                      |
 | E2E004    | WEAK    | WARNING  | `page.waitForTimeout` receives a numeric literal.                                                              | That every fixed wait is avoidable in an external-system workflow.          |
 | PARSER001 | INVALID | WARNING  | TypeScript reports a source parser diagnostic for a selected test file.                                        | That the test would fail or be invalid at framework runtime.                |
 
@@ -24,6 +27,7 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 - Rules operate only on extracted direct callbacks and never inspect execution results.
 - `API001` and `E2E002` require the limited matcher to be the sole recognized assertion target.
 - `E2E004` fires only for a literal numeric delay; variables are not flagged.
+- `UT004`, `API002`, and `E2E003` require every direct assertion to be the narrow zero-argument matcher pattern; modifiers, bare expects, and mixed assertions suppress the hint.
 - `PARSER001` reports source syntax only; it does not execute, resolve, or type-check the test at runtime.
 - Unflagged tests are deliberately `UNASSESSED`.
 

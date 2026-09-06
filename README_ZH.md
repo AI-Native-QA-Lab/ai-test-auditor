@@ -81,7 +81,7 @@ node dist/cli.js review benchmarks --format json
 
 ## 规则与边界
 
-v0.1 包含 UT001、UT002、UT003、UT008、UT011、API001、E2E001、E2E002、E2E004。规则优先保证可解释、可追溯的源码证据，而非追求规则数量。完整说明见[规则目录](./docs/zh/rules.md)。
+v0.5 包含 UT001、UT002、UT003、UT004、UT008、UT011、API001、API002、E2E001、E2E002、E2E003、E2E004。规则优先保证可解释、可追溯的源码证据，而非追求规则数量。完整说明见[规则目录](./docs/zh/rules.md)。
 
 FTR 和 Trust Score 只是透明的排序启发式指标，不是运行时质量、变异分数或发布结论。
 
