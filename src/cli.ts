@@ -3,6 +3,7 @@
 import { pathToFileURL } from 'node:url';
 import { Command, CommanderError, Option } from 'commander';
 import { auditPath, InputPathError, type ReviewType } from './core/audit.js';
+import { ChangedFilesError } from './core/changed-files.js';
 import { renderJson, renderText } from './reporters.js';
 import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
@@ -39,6 +40,10 @@ export async function runCli(
     )
     .option('--config <path>', 'JSON configuration file with an exclude array')
     .option(
+      '--changed-since <ref>',
+      'review supported test files changed since a local commit',
+    )
+    .option(
       '--semantic-report <path>',
       'versioned offline semantic-report JSON',
     )
@@ -62,6 +67,7 @@ export async function runCli(
           readonly type: ReviewType;
           readonly format: OutputFormat;
           readonly config?: string;
+          readonly changedSince?: string;
           readonly semanticReport?: string;
           readonly mutationReport?: string;
         },
@@ -69,6 +75,7 @@ export async function runCli(
         const result = await auditPath(inputPath, {
           type: options.type,
           configPath: options.config,
+          changedSince: options.changedSince,
         });
         const semantic = options.semanticReport
           ? await loadSemanticReport(options.semanticReport)
@@ -98,6 +105,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof ChangedFilesError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     if (error instanceof MutationReportError) {
       io.stderr(`Error: ${error.message}\n`);
       return 2;
@@ -116,7 +127,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.4.0')
+    .version('0.5.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

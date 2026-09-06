@@ -9,3 +9,6 @@ These cases are calibration inputs, not claims about a live application.
 | `no-finding`      | `expect(total).toBe(30)`                                          | `UNASSESSED` boundary; never `STRONG`.                        |
 | `unknown-context` | `expect(response.body).toEqual(expected)` without product context | No invented expected behavior; list missing contract context. |
 | `fixed-wait`      | `page.waitForTimeout(500)` and visible assertion                  | One `E2E004` `WEAK`, noting possible external-system context. |
+| `defined-only`    | Unit test only uses `toBeDefined()` / `toBeTruthy()`              | One `UT004` `WEAK`; request an observable value or effect.    |
+| `body-exists`     | API test only checks `response.body` existence                    | One `API002` `WEAK`; request endpoint content or effects.     |
+| `visible-only`    | E2E test only uses `toBeVisible()`                                | One `E2E003` `WEAK`; request a completed journey outcome.     |

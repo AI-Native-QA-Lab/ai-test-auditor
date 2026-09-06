@@ -3,6 +3,7 @@ import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
   expectCalls,
+  hasOnlyZeroArgumentMatchers,
   finding,
   isSimpleLiteral,
   isUnitTest,
@@ -40,6 +41,23 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
         ),
         fakeRemediation(
           'Add an assertion for an observable behavior or side effect.',
+        ),
+      ),
+    );
+  }
+
+  if (hasOnlyZeroArgumentMatchers(sourceFile, ['toBeDefined', 'toBeTruthy'])) {
+    findings.push(
+      finding(
+        testCase,
+        testAssertions[0]!.matcher,
+        'UT004',
+        'WEAK',
+        'WARNING',
+        'HIGH',
+        fakeMessage('UT004 verifies only that a value is defined or truthy.'),
+        fakeRemediation(
+          'Add an independently meaningful value, state, or effect assertion.',
         ),
       ),
     );

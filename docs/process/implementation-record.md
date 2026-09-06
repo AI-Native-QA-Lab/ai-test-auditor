@@ -105,3 +105,9 @@ Final review identified narrow correctness and documentation gaps. The correctiv
 ## Process-document policy
 
 Future material decisions, scope changes, validation commands, failures, and unresolved risks belong in this file. Do not replace evidence with retrospective claims.
+
+## v0.5 — 2026-09-06
+
+- Added bounded WEAK rules UT004, API002, and E2E003. Their predicates require every direct assertion to use the documented zero-argument matcher; modifiers, bare expects, and mixed assertions are negative controls.
+- Added `--changed-since <ref>`, which selects current supported test files present in the local diff and untracked-file status relative to a verified local commit. It does not execute source, inspect changed production code, or infer test relevance.
+- Validation: `npm test` (108 tests), `npm run lint`, `npm run typecheck`, `npm run build`, `npm run format:check`, and `git diff --check` passed.

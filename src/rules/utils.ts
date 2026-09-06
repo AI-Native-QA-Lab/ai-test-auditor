@@ -100,6 +100,25 @@ export function assertions(sourceFile: ts.SourceFile): Assertion[] {
   return found;
 }
 
+export function hasOnlyZeroArgumentMatchers(
+  sourceFile: ts.SourceFile,
+  matcherNames: readonly string[],
+  actualMatches: (actual: ts.Expression) => boolean = () => true,
+): boolean {
+  const direct = expectCalls(sourceFile);
+  const found = assertions(sourceFile);
+  return (
+    direct.length > 0 &&
+    direct.length === found.length &&
+    found.every(
+      (assertion) =>
+        matcherNames.includes(assertion.matcherName) &&
+        assertion.matcher.arguments.length === 0 &&
+        actualMatches(assertion.actual),
+    )
+  );
+}
+
 export function isSimpleLiteral(expression: ts.Expression): boolean {
   return (
     ts.isStringLiteralLike(expression) ||
