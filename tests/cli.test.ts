@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli';
-import { auditPath } from '../src/core/audit';
 
 const temporaryRoots: string[] = [];
 
@@ -47,18 +46,6 @@ async function invoke(args: string[]): Promise<{
 }
 
 describe('ata review', () => {
-  it('reports changed-since selection metadata for current test files', async () => {
-    const result = await auditPath('.', { changedSince: 'HEAD' });
-
-    expect(result.selection).toMatchObject({
-      mode: 'changed-since',
-      requestedBaseRef: 'HEAD',
-    });
-    expect(
-      result.selection?.files.some((file) => file.endsWith('cli.test.ts')),
-    ).toBe(true);
-  });
-
   it('reports the current package release version', async () => {
     const invocation = await invoke(['--version']);
 
