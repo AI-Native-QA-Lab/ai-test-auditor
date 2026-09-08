@@ -10,18 +10,18 @@
 
 ## Iteration plan
 
-| Phase | Outcome                                                                             | Evidence required before claiming delivery                                      |
-| ----- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 0.1   | Deterministic static-rule MVP.                                                      | Rule-level positive/negative tests and CLI fixtures.                            |
-| 0.2   | More framework extraction and configuration, including explicit parser diagnostics. | Fixture corpus and compatibility matrix.                                        |
-| 0.3   | Optional semantic review interface.                                                 | Versioned prompt/schema, disclosed model and evidence limits, evaluation set.   |
-| 0.4   | Delivered: offline mutation-evidence adapter.                                       | Versioned schema, command/threshold provenance, parser and CLI contracts.       |
-| 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                  | Rule catalog, false-positive analysis, integration tests.                       |
-| 0.6.0 | Delivered: advisory source-only audit policy presentation and selection counts.     | Public contracts and the full documented validation gate.                       |
-| 0.7   | Planned: baseline comparison.                                                       | Separate maintainer decision, fixture evidence, and no delivery claim.          |
-| 0.8   | Planned: CI-neutral adapter.                                                        | Separate maintainer decision, adapter contract, and no delivery claim.          |
-| 0.9   | Planned: GitHub examples.                                                           | Separate maintainer decision, example validation, and no delivery claim.        |
-| 1.0   | Planned: opt-in policy-gate integration.                                            | Opt-in configuration, CI samples, and documented failure semantics.             |
+| Phase | Outcome                                                                                              | Evidence required before claiming delivery                                      |
+| ----- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 0.1   | Deterministic static-rule MVP.                                                                       | Rule-level positive/negative tests and CLI fixtures.                            |
+| 0.2   | More framework extraction and configuration, including explicit parser diagnostics.                  | Fixture corpus and compatibility matrix.                                        |
+| 0.3   | Optional semantic review interface.                                                                  | Versioned prompt/schema, disclosed model and evidence limits, evaluation set.   |
+| 0.4   | Delivered: offline mutation-evidence adapter.                                                        | Versioned schema, command/threshold provenance, parser and CLI contracts.       |
+| 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                                   | Rule catalog, false-positive analysis, integration tests.                       |
+| 0.6.0 | Delivered: advisory source-only audit policy presentation and selection counts.                      | Public contracts and the full documented validation gate.                       |
+| 0.7   | Planned: baseline comparison.                                                                        | Separate maintainer decision, fixture evidence, and no delivery claim.          |
+| 0.8   | Planned: CI-neutral adapter.                                                                         | Separate maintainer decision, adapter contract, and no delivery claim.          |
+| 0.9   | Planned: GitHub examples.                                                                            | Separate maintainer decision, example validation, and no delivery claim.        |
+| 1.0   | Planned: opt-in policy-gate integration.                                                             | Opt-in configuration, CI samples, and documented failure semantics.             |
 | 2.0   | Separately planned: runtime, mutation, and LLM adapters; optional static-first AI assist after v1.0. | Separate design, safety review, and implementation evidence; no delivery claim. |
 
 ## Sequencing principles

@@ -8,12 +8,12 @@ This document records product principles and a two-phase contract. It is not a d
 
 ## Placement relative to shipped versions
 
-| Phase | Status | AI relationship |
-| --- | --- | --- |
-| v0.3 | Delivered | Offline `--semantic-report` loader and provider-config validation only. No credentials read, no network, no model invocation. |
-| v0.4–v0.6.0 | Delivered | Mutation evidence, rule expansion, changed-file selection, advisory policy. No live AI. |
-| v0.7–v1.0 | Planned | Baseline, CI-neutral adapter, GitHub examples, opt-in static gate. Gate inputs remain static/policy, never model conclusions. |
-| v2.0 | Separately planned | Optional AI assist: phase A offline contract hardening, then phase B explicit live invocation. |
+| Phase       | Status             | AI relationship                                                                                                               |
+| ----------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| v0.3        | Delivered          | Offline `--semantic-report` loader and provider-config validation only. No credentials read, no network, no model invocation. |
+| v0.4–v0.6.0 | Delivered          | Mutation evidence, rule expansion, changed-file selection, advisory policy. No live AI.                                       |
+| v0.7–v1.0   | Planned            | Baseline, CI-neutral adapter, GitHub examples, opt-in static gate. Gate inputs remain static/policy, never model conclusions. |
+| v2.0        | Separately planned | Optional AI assist: phase A offline contract hardening, then phase B explicit live invocation.                                |
 
 Current shipped version at the time of this decision: **v0.6.0**. The AI assist layer is **not** a v0.6 patch and is **not** inserted into v0.7–v1.0 delivery scope.
 
@@ -97,13 +97,13 @@ Forbidden:
 
 ## Relationship to existing adapters
 
-| Adapter | Role relative to this design |
-| --- | --- |
-| Deterministic rules | Primary detector; unchanged ownership of classifications. |
-| `--semantic-report` (v0.3) | Mount point for Phase A offline assist artifacts. |
-| `--mutation-report` (v0.4) | Separate execution-evidence channel; not AI assist. |
-| `--policy` (v0.6.0) | Advisory rule selection counts only; not a model switch and not a gate by itself. |
-| v1.0 opt-in gate | Static/policy only; AI assist remains outside gate inputs. |
+| Adapter                    | Role relative to this design                                                      |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| Deterministic rules        | Primary detector; unchanged ownership of classifications.                         |
+| `--semantic-report` (v0.3) | Mount point for Phase A offline assist artifacts.                                 |
+| `--mutation-report` (v0.4) | Separate execution-evidence channel; not AI assist.                               |
+| `--policy` (v0.6.0)        | Advisory rule selection counts only; not a model switch and not a gate by itself. |
+| v1.0 opt-in gate           | Static/policy only; AI assist remains outside gate inputs.                        |
 
 ## Sequencing principles retained
 
