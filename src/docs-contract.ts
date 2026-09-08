@@ -223,6 +223,26 @@ const policyBoundaryDocuments: readonly PublicDocument[] = [
   },
 ];
 
+const decisionBoundaryDocuments: readonly PublicDocument[] = [
+  { path: 'README.md', terms: ['ata decision', 'CI gate', 'valid decision'] },
+  { path: 'README_ZH.md', terms: ['ata decision', 'CI 门禁', '有效决策'] },
+  {
+    path: 'docs/requirements.md',
+    terms: ['ata decision', 'semantic', 'mutation'],
+  },
+  {
+    path: 'docs/zh/requirements.md',
+    terms: ['ata decision', 'semantic', 'mutation'],
+  },
+  { path: 'docs/architecture.md', terms: ['decision', 'advisory decision'] },
+  { path: 'docs/zh/architecture.md', terms: ['decision', '建议性决策'] },
+  { path: 'test-quality-audit/SKILL.md', terms: ['ata decision', 'CI gate'] },
+  {
+    path: 'test-quality-audit/SKILL_ZH.md',
+    terms: ['ata decision', 'CI 门禁'],
+  },
+];
+
 export async function validateBilingualPublicMarkers(): Promise<string[]> {
   const violations: string[] = [];
   const contents = new Map<string, string>();
@@ -237,6 +257,10 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
   }
 
   for (const document of policyBoundaryDocuments) {
+    const content = await readDocument(document.path, contents);
+    addMissingTerms(violations, document.path, content, document.terms);
+  }
+  for (const document of decisionBoundaryDocuments) {
     const content = await readDocument(document.path, contents);
     addMissingTerms(violations, document.path, content, document.terms);
   }

@@ -9,6 +9,11 @@ import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
 import { PolicyError } from './core/policy.js';
 import { BaselineError } from './core/baseline.js';
+import {
+  createAdvisoryDecision,
+  DecisionError,
+  loadDecisionEnvelope,
+} from './core/decision.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -105,6 +110,20 @@ export async function runCli(
       },
     );
 
+  program
+    .command('decision')
+    .description(
+      'Convert a versioned static audit snapshot into an advisory decision',
+    )
+    .argument('<envelope>', 'versioned static-audit decision envelope')
+    .action(async (envelope: string) => {
+      const decision = createAdvisoryDecision(
+        await loadDecisionEnvelope(envelope),
+      );
+      io.stdout(`${JSON.stringify(decision, null, 2)}\n`);
+      resultCode = 0;
+    });
+
   try {
     await program.parseAsync(['node', 'ata', ...args]);
     return resultCode;
@@ -136,6 +155,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof DecisionError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -146,7 +169,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.7.0')
+    .version('0.8.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

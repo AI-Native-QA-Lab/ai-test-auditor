@@ -119,6 +119,10 @@ node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
 
 身份由规则 ID、相对输入根目录的 POSIX 路径、行号、分类和严重性组成。基线只报告历史和新增发现项计数。历史项不代表已接受、安全、豁免或已解决；它不改变静态分类、发现项、FTR、Trust Score、策略计数或退出语义。无效基线输入返回退出码 `2`。
 
+## v0.8.0 CI 无关的建议性决策
+
+`ata decision ./decision-envelope.json` 将严格的本地 version `1` 静态审计信封转换为简洁的 JSON 建议性决策。有效决策返回 `0`；无效或不支持的信封返回 `2`。它拒绝未知字段和 `semantic`/`mutation` 附件。策略和基线 ID 仅作上下文；该决策不是 CI 门禁、通过/失败结果、豁免或发布决定。
+
 ### 退出码
 
 | 代码 | 含义                                                               |
