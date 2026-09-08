@@ -92,6 +92,32 @@ node dist/cli.js review ./tests --policy ./audit-policy.json --format json
 
 The installed package exposes the same command as `ata review [path]`; a source checkout can use `node dist/cli.js review [path]`. Both default to the current directory and never import or execute target source. The `--changed-since` ref is local; it selects only current supported test files and does not infer production-code-to-test relevance.
 
+## v0.7.0 baseline comparison
+
+Pass a local version `1` baseline to label current findings by stable identity:
+
+```bash
+node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
+```
+
+```json
+{
+  "version": "1",
+  "id": "main",
+  "findings": [
+    {
+      "ruleId": "UT002",
+      "filePath": "tests/example.test.ts",
+      "line": 12,
+      "classification": "FAKE",
+      "severity": "CRITICAL"
+    }
+  ]
+}
+```
+
+The identity is rule ID, root-relative POSIX path, line, classification, and severity. Baseline output reports historical and new finding counts only. Historical does not mean accepted, safe, waived, or resolved; it does not change static classifications, findings, FTR, Trust Score, policy counts, or exit semantics. Invalid baseline input exits `2`.
+
 ### Exit codes
 
 | Code | Meaning                                                                                               |

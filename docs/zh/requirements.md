@@ -21,12 +21,13 @@ AI 辅助开发可能产生能编译、能运行、甚至提高覆盖率，却�
 
 ## 范围内
 
-- Node.js 20+ CLI：`ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>]`。
+- Node.js 20+ CLI：`ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>] [--baseline <path>]`。
 - 支持 JS、TS、TSX 测试源码约定的 AST 提取。
 - 公开目录中的确定性规则。
 - 文本和 JSON 报告、FTR、透明的启发式分数。
 - 相对于本地提交的变更文件选择，仅限当前支持的测试文件；不会推断生产代码与测试的关联。
 - 外部提供的 version `1` 的建议性策略只能报告禁用/活跃选择计数；不改变静态分类、汇总值、FTR、Trust Score 或退出语义。
+- 外部提供的 version `1` 基线只能报告历史/新增发现项身份计数；历史不代表接受发现项，也不改变静态分类、汇总值、FTR、Trust Score、策略计数或退出语义；无效基线输入返回退出码 `2`。
 - 可以校验和显示外部提供的、带版本的语义报告，作为离线建议性证据；不会执行模型，也不会改变静态分类或退出语义。
 - 英文主文档、中文翻译、基准 fixture、CI 与独立 Skill。
 

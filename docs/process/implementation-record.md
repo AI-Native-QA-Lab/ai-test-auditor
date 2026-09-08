@@ -1,5 +1,11 @@
 # Implementation Record
 
+## 2026-09-08 — v0.7.0 baseline comparison
+
+Added a local version `1` baseline artifact whose stable identity is rule ID, root-relative POSIX path, line, classification, and severity. It reports historical/new counts only: historical is not acceptance, waiver, or quality evidence, and does not change findings, classifications, summary, FTR, Trust Score, policy counts, or exit semantics. Invalid baseline input exits `2`.
+
+Observed RED: `npx vitest run tests/core/baseline.test.ts` failed because `src/core/baseline.ts` was absent; audit RED lacked the baseline attachment; CLI/reporter RED lacked the flag, version, and text block. The corresponding GREEN runs passed. Full validation: 14 test files / 140 tests passed; lint, typecheck, format check, build, and `git diff --check` passed; benchmark JSON returned its expected exit `1`.
+
 ## 2026-09-08 — optional AI assist deferred to v2.0
 
 Recorded the product decision that optional model assistance is static-first, default-off, advisory-only, and scheduled after the v1.0 opt-in gate as part of v2.0 (offline contract hardening, then explicit live invocation). AI assist must not emit `FAKE`/`WEAK`/`STRONG`/`INVALID`, and must not change static summary, FTR, Trust Score, exit semantics, or gate inputs. Near-term v0.7–v1.0 scope is unchanged; no live provider implementation was added. Design: `docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`. Public roadmap v2.0 wording updated in English and Chinese.

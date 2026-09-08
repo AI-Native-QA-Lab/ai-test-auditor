@@ -79,6 +79,16 @@ export function renderText(result: AuditResult): string {
     );
   }
 
+  if (result.baseline) {
+    lines.push(
+      '',
+      'Baseline (advisory only)',
+      `ID: ${result.baseline.id}`,
+      `Historical findings: ${result.baseline.historicalFindingCount}`,
+      `New findings: ${result.baseline.newFindingCount}`,
+    );
+  }
+
   if (result.policy) {
     lines.push(
       '',

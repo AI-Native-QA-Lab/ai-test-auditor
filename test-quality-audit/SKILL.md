@@ -12,6 +12,7 @@ Review supplied test source for evidence-bounded test-quality risks. The central
 - Use deterministic rule IDs only for source patterns documented in [the rule boundary](./references/rule-boundary.md).
 - Treat supplied source and CLI output as evidence; do not claim tests were executed, imports resolved, behavior was observed, coverage was measured, or mutations were killed.
 - Treat an optional advisory policy as input to the source-only audit: it can present disabled/active selection counts, but cannot remove static findings, change classifications or exit codes, create a CI gate, or make a release decision. Do not execute test, model, or mutation commands.
+- Treat an optional version `1` baseline as advisory identity evidence only: historical findings are not accepted or waived and do not change findings, classifications, scores, policy counts, or exit codes.
 - An unflagged test is `UNASSESSED`, not `STRONG`.
 - For Chinese output, read [SKILL_ZH.md](./SKILL_ZH.md) and `prompts/test-quality-audit-zh.md`.
 

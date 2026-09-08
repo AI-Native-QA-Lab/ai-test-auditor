@@ -8,6 +8,7 @@ import { renderJson, renderText } from './reporters.js';
 import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
 import { PolicyError } from './core/policy.js';
+import { BaselineError } from './core/baseline.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -56,6 +57,7 @@ export async function runCli(
       'versioned offline mutation-evidence JSON',
     )
     .option('--policy <path>', 'versioned advisory policy JSON')
+    .option('--baseline <path>', 'versioned advisory finding-baseline JSON')
     .addOption(
       new Option('--format <format>', 'output format')
         .choices(['text', 'json'])
@@ -76,6 +78,7 @@ export async function runCli(
           readonly semanticReport?: string;
           readonly mutationReport?: string;
           readonly policy?: string;
+          readonly baseline?: string;
         },
       ) => {
         const result = await auditPath(inputPath, {
@@ -83,6 +86,7 @@ export async function runCli(
           configPath: options.config,
           changedSince: options.changedSince,
           policyPath: options.policy,
+          baselinePath: options.baseline,
         });
         const semantic = options.semanticReport
           ? await loadSemanticReport(options.semanticReport)
@@ -128,6 +132,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof BaselineError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -138,7 +146,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.6.0')
+    .version('0.7.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

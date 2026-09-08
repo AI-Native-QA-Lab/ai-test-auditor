@@ -41,6 +41,27 @@ export interface Finding {
   readonly remediation: string;
 }
 
+export interface BaselineFindingIdentity {
+  readonly ruleId: string;
+  readonly filePath: string;
+  readonly line: number;
+  readonly classification: Classification;
+  readonly severity: Severity;
+}
+
+export interface FindingBaseline {
+  readonly version: '1';
+  readonly id: string;
+  readonly findings: readonly BaselineFindingIdentity[];
+}
+
+export interface BaselineComparison {
+  readonly version: '1';
+  readonly id: string;
+  readonly historicalFindingCount: number;
+  readonly newFindingCount: number;
+}
+
 export interface AuditPolicy {
   readonly version: '1';
   readonly id: string;
@@ -75,6 +96,7 @@ export interface AuditResult {
   readonly semantic?: import('./semantic.js').SemanticReport;
   readonly mutation?: import('./mutation.js').MutationReport;
   readonly policy?: PolicyEvaluation;
+  readonly baseline?: BaselineComparison;
   readonly summary: AuditSummary;
   readonly selection?: FileSelection;
 }
