@@ -2,6 +2,18 @@
 
 # 实施过程记录
 
+## 2026-09-07 — v0.6.0 建议性策略公开契约完成
+
+公开契约将 `--policy` 定义为纯源码审计的显式 version `1`、`mode: "advisory"` 输入。它只报告禁用/活跃选择计数；不会移除发现项，也不改变分类、汇总/FTR/Trust Score、退出语义、CI 门禁行为或发布决定。对应的中英文 README、路线图、架构、规则、Skill、Prompt、参考资料和评估材料均保留该边界。
+
+聚焦文档契约 RED：`npx vitest run tests/docs-contract.test.ts` 因 8 个预期缺失标记失败：两份 README 与两份路线图均缺少 `0.6.0` 和纯源码审计措辞。GREEN：以最小的双语标记补充后，同一命令通过（1 个测试）。随后完整验证记录为：`npm test` 的 13 个文件 / 131 个测试通过，`npm run lint` 和 `npm run typecheck` 通过，格式化 `docs/roadmap.md` 后 `npm run format:check` 通过，`npm run build` 通过，`node dist/cli.js review benchmarks --format json` 以预期退出码 `1` 返回并产生 6 个 `FAKE` 与 1 个 `WEAK` 发现项，`git diff --check` 通过。策略处理不会执行被审计源码、测试、模型或 mutation 命令。
+
+已观察到的策略实现证据：Task 3 运行 `npx vitest run tests/core/policy.test.ts`；RED 因 `src/core/policy.ts` 不存在而失败，随后 GREEN 通过 11 个测试。Task 4 运行 `npx vitest run tests/core/audit.test.ts tests/cli.test.ts tests/reporters.test.ts`；RED 显示预期的策略附加与 CLI 缺失失败，最终 GREEN 通过 38 个测试。这些记录与上述实际文档契约 RED/GREEN 和完整验证结果一并保留。
+
+## 2026-09-07 — 历史 TDD 证据限制
+
+v0.3 和 v0.5 缺少可恢复的、已观察到的聚焦 RED 与 GREEN 命令记录。历史 RED/GREEN 证据未记录。本条目不作追溯性的 TDD 声明，也不虚构过去的命令或结果。未来的关键行为变更必须在发布验证前记录已观察到的聚焦 RED 与 GREEN 命令。
+
 ## 2026-09-05 — v0.4 离线变异证据
 
 新增位于 `--mutation-report` 后的 version `1` 变异报告适配器。证据必须包含引擎标识、已记录命令、阈值来源、数量和一致的分数。记录的命令绝不会被执行；阈值状态仅供建议，不改变静态发现、分类、FTR、Trust Score 或退出码。

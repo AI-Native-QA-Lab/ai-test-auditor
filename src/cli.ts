@@ -7,6 +7,7 @@ import { ChangedFilesError } from './core/changed-files.js';
 import { renderJson, renderText } from './reporters.js';
 import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
+import { PolicyError } from './core/policy.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -38,7 +39,10 @@ export async function runCli(
         .choices(['unit', 'api', 'e2e', 'auto'])
         .default('auto'),
     )
-    .option('--config <path>', 'JSON configuration file with an exclude array')
+    .option(
+      '--config <path>',
+      'JSON configuration file with include and exclude arrays',
+    )
     .option(
       '--changed-since <ref>',
       'review supported test files changed since a local commit',
@@ -51,6 +55,7 @@ export async function runCli(
       '--mutation-report <path>',
       'versioned offline mutation-evidence JSON',
     )
+    .option('--policy <path>', 'versioned advisory policy JSON')
     .addOption(
       new Option('--format <format>', 'output format')
         .choices(['text', 'json'])
@@ -70,12 +75,14 @@ export async function runCli(
           readonly changedSince?: string;
           readonly semanticReport?: string;
           readonly mutationReport?: string;
+          readonly policy?: string;
         },
       ) => {
         const result = await auditPath(inputPath, {
           type: options.type,
           configPath: options.config,
           changedSince: options.changedSince,
+          policyPath: options.policy,
         });
         const semantic = options.semanticReport
           ? await loadSemanticReport(options.semanticReport)
@@ -117,6 +124,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof PolicyError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -127,7 +138,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.5.0')
+    .version('0.6.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

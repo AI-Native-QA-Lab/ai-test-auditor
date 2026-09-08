@@ -11,24 +11,215 @@ interface DocumentPair {
   readonly chineseTerms: readonly string[];
 }
 
+interface PublicDocument {
+  readonly path: string;
+  readonly terms: readonly string[];
+}
+
 const documentPairs: readonly DocumentPair[] = [
   {
     english: 'README.md',
     chinese: 'README_ZH.md',
-    englishTerms: ['--mutation-report', 'PARSER001', '`2`'],
-    chineseTerms: ['--mutation-report', 'PARSER001', '`2`'],
+    englishTerms: [
+      '--mutation-report',
+      '--changed-since',
+      '--policy',
+      'advisory',
+      '0.6.0',
+      'source-only audit',
+      'not a default CI gate',
+      'release decision',
+      'invalid policy input',
+      'production-code-to-test relevance',
+      'PARSER001',
+      '`2`',
+    ],
+    chineseTerms: [
+      '--mutation-report',
+      '--changed-since',
+      '--policy',
+      'advisory',
+      '0.6.0',
+      '纯源码审计',
+      '不是默认 CI 门禁',
+      '发布决定',
+      '无效策略输入',
+      '生产代码与测试',
+      'PARSER001',
+      '`2`',
+    ],
   },
   {
     english: 'docs/requirements.md',
     chinese: 'docs/zh/requirements.md',
-    englishTerms: ['PARSER001', 'semantic/mutation report'],
-    chineseTerms: ['PARSER001', 'semantic/mutation report'],
+    englishTerms: [
+      'PARSER001',
+      'semantic/mutation report',
+      '--policy <path>',
+      'version `1` advisory policy',
+      'disabled/active selection counts only',
+      'does not change static classifications, summary values, FTR, Trust Score, or exit semantics',
+      'invalid policy',
+    ],
+    chineseTerms: [
+      'PARSER001',
+      'semantic/mutation report',
+      '--policy <path>',
+      'version `1` 的建议性策略',
+      '禁用/活跃选择计数',
+      '不改变静态分类、汇总值、FTR、Trust Score 或退出语义',
+      '无效策略',
+    ],
   },
   {
     english: 'docs/roadmap.md',
     chinese: 'docs/zh/roadmap.md',
-    englishTerms: ['v0.4', '--mutation-report'],
-    chineseTerms: ['v0.4', '--mutation-report'],
+    englishTerms: [
+      'v0.4',
+      '--mutation-report',
+      '--policy',
+      'advisory',
+      '0.6.0',
+      'source-only audit',
+      'no default CI gate',
+      'release decision',
+      '0.7',
+      '0.8',
+      '0.9',
+      '2.0',
+      'source-only/advisory boundary',
+      'runtime, mutation, and LLM adapters',
+      'v0.7 through v0.9 remain source-only and advisory',
+      'v1.0 remains source-only and is a stable explicit opt-in quality gate',
+      'blocking only when a repository policy enables it',
+    ],
+    chineseTerms: [
+      'v0.4',
+      '--mutation-report',
+      '--policy',
+      'advisory',
+      '0.6.0',
+      '纯源码审计',
+      '不存在默认 CI 门禁',
+      '发布决定',
+      '0.7',
+      '0.8',
+      '0.9',
+      '2.0',
+      '纯源码/建议性边界',
+      '运行时、变异和 LLM 适配器',
+      'v0.7 至 v0.9 保持纯源码且建议性',
+      'v1.0 保持纯源码，并是稳定、显式 opt-in 的质量门禁',
+      '仅当仓库策略启用时才阻断',
+    ],
+  },
+  {
+    english: 'docs/process/implementation-record.md',
+    chinese: 'docs/process/implementation-record_zh.md',
+    englishTerms: ['historical RED/GREEN evidence is not recorded'],
+    chineseTerms: ['历史 RED/GREEN 证据未记录'],
+  },
+  {
+    english: 'docs/architecture.md',
+    chinese: 'docs/zh/architecture.md',
+    englishTerms: [
+      '--policy',
+      'advisory policy',
+      'source-only audit',
+      'Invalid policy input exits `2`',
+      'CI gate',
+      'release decision',
+    ],
+    chineseTerms: [
+      '--policy',
+      '建议性策略',
+      '纯源码审计',
+      '无效策略输入返回退出码 `2`',
+      'CI 门禁',
+      '发布决定',
+    ],
+  },
+  {
+    english: 'docs/rules.md',
+    chinese: 'docs/zh/rules.md',
+    englishTerms: [
+      '--policy',
+      'advisory',
+      'source-only audit',
+      'Invalid policy input exits `2`',
+      'CI gate',
+      'release decision',
+    ],
+    chineseTerms: [
+      '--policy',
+      'advisory',
+      '纯源码审计',
+      '无效策略输入返回退出码 `2`',
+      'CI 门禁',
+      '发布决定',
+    ],
+  },
+  {
+    english: 'test-quality-audit/SKILL.md',
+    chinese: 'test-quality-audit/SKILL_ZH.md',
+    englishTerms: [
+      'advisory policy',
+      'source-only audit',
+      'disabled/active selection counts',
+      'CI gate',
+      'release decision',
+      'Do not execute test, model, or mutation commands.',
+    ],
+    chineseTerms: [
+      'advisory 策略',
+      '纯源码审计',
+      '禁用/活跃选择计数',
+      'CI 门禁',
+      '发布决定',
+      '不得执行测试、模型或 mutation 命令。',
+    ],
+  },
+  {
+    english: 'test-quality-audit/prompts/test-quality-audit.md',
+    chinese: 'test-quality-audit/prompts/test-quality-audit-zh.md',
+    englishTerms: [
+      'advisory policy',
+      'source-only audit',
+      'disabled/active selection counts',
+      'CI gate',
+      'release decision',
+    ],
+    chineseTerms: [
+      'advisory 策略',
+      '纯源码审计',
+      '禁用/活跃选择计数',
+      'CI 门禁',
+      '发布决定',
+    ],
+  },
+];
+
+const policyBoundaryDocuments: readonly PublicDocument[] = [
+  {
+    path: 'test-quality-audit/references/rule-boundary.md',
+    terms: [
+      'mode: "advisory"',
+      'source-only audit',
+      'disabled/active selection counts',
+      'never executes test, model, or mutation commands',
+      'CI gate',
+      'release decision',
+    ],
+  },
+  {
+    path: 'test-quality-audit/evals/cases.md',
+    terms: [
+      '`advisory-policy`',
+      'source-only findings/classifications',
+      'selection counts only',
+      'CI gate',
+      'release decision',
+    ],
   },
 ];
 
@@ -43,6 +234,11 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
     ]);
     addMissingTerms(violations, pair.english, english, pair.englishTerms);
     addMissingTerms(violations, pair.chinese, chinese, pair.chineseTerms);
+  }
+
+  for (const document of policyBoundaryDocuments) {
+    const content = await readDocument(document.path, contents);
+    addMissingTerms(violations, document.path, content, document.terms);
   }
 
   const [englishRules, chineseRules] = await Promise.all([
@@ -64,6 +260,21 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
       'Exit code rows differ between README.md and README_ZH.md.',
     );
   }
+  if (!exitCodeMeaning(englishReadme, '2').includes('invalid policy input')) {
+    violations.push(
+      'README.md exit code 2 row must include invalid policy input.',
+    );
+  }
+  if (!exitCodeMeaning(chineseReadme, '2').includes('无效策略输入')) {
+    violations.push('README_ZH.md exit code 2 row must include 无效策略输入。');
+  }
+
+  const [englishRoadmap, chineseRoadmap] = await Promise.all([
+    readDocument('docs/roadmap.md', contents),
+    readDocument('docs/zh/roadmap.md', contents),
+  ]);
+  addRoadmapPhaseViolations(violations, 'docs/roadmap.md', englishRoadmap);
+  addRoadmapPhaseViolations(violations, 'docs/zh/roadmap.md', chineseRoadmap);
 
   return violations;
 }
@@ -115,4 +326,32 @@ function exitCodes(content: string): string[] {
   return [...content.matchAll(/^\| `(\d+)`\s*\|/gm)].map(
     (match) => match[1] ?? '',
   );
+}
+
+function exitCodeMeaning(content: string, code: string): string {
+  const match = content.match(
+    new RegExp(`^\\| \`${code}\`\\s*\\| (.+) \\|$`, 'm'),
+  );
+  return match?.[1] ?? '';
+}
+
+function addRoadmapPhaseViolations(
+  violations: string[],
+  path: string,
+  content: string,
+): void {
+  const expected = ['0.6.0', '0.7', '0.8', '0.9', '1.0', '2.0'];
+  const actual = [
+    ...content.matchAll(/^\| (0\.6\.0|0\.7|0\.8|0\.9|1\.0|2\.0)\s*\|/gm),
+  ].map((match) => match[1] ?? '');
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    violations.push(
+      `${path} must list roadmap phases in order: ${expected.join(', ')}.`,
+    );
+  }
+  if (content.includes('0.7–2.0')) {
+    violations.push(
+      `${path} must not retain the legacy 0.7–2.0 roadmap range.`,
+    );
+  }
 }

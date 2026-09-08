@@ -21,17 +21,19 @@ AI 辅助开发可能产生能编译、能运行、甚至提高覆盖率，却�
 
 ## 范围内
 
-- Node.js 20+ CLI：`ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>]`。
+- Node.js 20+ CLI：`ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>]`。
 - 支持 JS、TS、TSX 测试源码约定的 AST 提取。
 - 公开目录中的确定性规则。
 - 文本和 JSON 报告、FTR、透明的启发式分数。
 - 相对于本地提交的变更文件选择，仅限当前支持的测试文件；不会推断生产代码与测试的关联。
+- 外部提供的 version `1` 的建议性策略只能报告禁用/活跃选择计数；不改变静态分类、汇总值、FTR、Trust Score 或退出语义。
+- 可以校验和显示外部提供的、带版本的语义报告，作为离线建议性证据；不会执行模型，也不会改变静态分类或退出语义。
 - 英文主文档、中文翻译、基准 fixture、CI 与独立 Skill。
 
 ## 范围外
 
 - 执行测试、import 测试代码、解析运行时依赖，或证明测试可以运行。
-- LLM 评审、语义意图推断、运行 Mutation Testing、覆盖率、脆弱测试检测或 GitHub PR 注释。可以校验和显示外部提供的变异证据产物，但不会执行它，也不会将其作为门禁。
+- 执行 LLM、生成语义意图推断、运行 Mutation Testing、覆盖率、脆弱测试检测或 GitHub PR 注释。可以校验和显示外部提供的变异证据产物，但不会执行它，也不会将其作为门禁。
 - 因静态规则未命中而标记 `STRONG`。
 - 文档所述直接 Jest/Vitest/Playwright 回调之外的框架支持。
 
@@ -50,7 +52,7 @@ AI 辅助开发可能产生能编译、能运行、甚至提高覆盖率，却�
 - 扫描支持的文件或目录时不执行其中源码。
 - 每条发现项均含 rule ID、分类、严重性、置信度、文件、行号、信息和修复建议。
 - 文本报告是审计结果的可读投影；JSON 包含完整的结构化公开结果契约。
-- 退出码：无 `FAKE` 为 `0`，至少一条 `FAKE` 为 `1`，无效命令、输入、semantic/mutation report 或选中源码语法为 `2`。
+- 退出码：无 `FAKE` 为 `0`，至少一条 `FAKE` 为 `1`，无效命令、无效策略、输入、semantic/mutation report 或选中源码语法为 `2`。
 - README、中英文文档、Skill 只描述已经实现的行为。
 
 ## 成功信号与限制

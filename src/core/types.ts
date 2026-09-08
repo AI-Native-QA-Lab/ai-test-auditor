@@ -41,6 +41,22 @@ export interface Finding {
   readonly remediation: string;
 }
 
+export interface AuditPolicy {
+  readonly version: '1';
+  readonly id: string;
+  readonly mode: 'advisory';
+  readonly disabledRuleIds: readonly string[];
+}
+
+export interface PolicyEvaluation {
+  readonly id: string;
+  readonly version: '1';
+  readonly mode: 'advisory';
+  readonly disabledRuleIds: readonly string[];
+  readonly disabledFindingCount: number;
+  readonly activeFindingCount: number;
+}
+
 export interface AuditSummary {
   readonly total: number;
   readonly assessed: number;
@@ -58,6 +74,7 @@ export interface AuditResult {
   readonly diagnostics?: readonly ParserDiagnostic[];
   readonly semantic?: import('./semantic.js').SemanticReport;
   readonly mutation?: import('./mutation.js').MutationReport;
+  readonly policy?: PolicyEvaluation;
   readonly summary: AuditSummary;
   readonly selection?: FileSelection;
 }

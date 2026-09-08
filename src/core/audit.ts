@@ -5,6 +5,7 @@ import { resolveSemanticProvider } from './semantic.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
 import { selectChangedFiles } from './changed-files.js';
+import { evaluatePolicy, loadPolicy } from './policy.js';
 import type {
   AuditResult,
   AuditSummary,
@@ -20,6 +21,7 @@ export interface AuditOptions {
   readonly type?: ReviewType;
   readonly configPath?: string;
   readonly changedSince?: string;
+  readonly policyPath?: string;
 }
 
 const supportedTestFile = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
@@ -112,12 +114,23 @@ export async function auditPath(
     diagnostics.length === 0
       ? result
       : appendParserDiagnostics(result, diagnostics);
-  return selection
+  const auditedResult = selection
     ? {
         ...withDiagnostics,
         selection: { ...selection, files: selectedFiles.sort() },
       }
     : withDiagnostics;
+  const policyPath =
+    typeof options === 'string' ? undefined : options.policyPath;
+  if (!policyPath) return auditedResult;
+
+  return {
+    ...auditedResult,
+    policy: evaluatePolicy(
+      await loadPolicy(policyPath),
+      auditedResult.findings,
+    ),
+  };
 }
 
 function appendParserDiagnostics(

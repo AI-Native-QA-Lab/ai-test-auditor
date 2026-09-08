@@ -10,3 +10,5 @@ This Skill mirrors the current CLI scope. It can cite UT001, UT002, UT003, UT004
 | `UNASSESSED`    | No documented deterministic rule visibly applies.                           |
 
 Do not report `INVALID` for import, fixture, dependency, syntax, or runtime failures unless separately supplied parser/execution evidence exists. The current CLI does not generate that evidence.
+
+An optional version `1` policy (`id`, `mode: "advisory"`, and optional unique `disabledRuleIds`) is input to the source-only audit. It only presents disabled/active selection counts; it never executes test, model, or mutation commands, removes a finding, changes static classifications or exit semantics, becomes a CI gate, or makes a release decision.

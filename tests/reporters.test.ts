@@ -141,4 +141,22 @@ describe('reporters', () => {
     expect(output).toContain('Threshold: met (80.00%)');
     expect(output).toContain('[CRITICAL] [FAKE] UT002');
   });
+
+  it('renders advisory policy counts with the stable text labels', () => {
+    const output = renderText({
+      ...result,
+      policy: {
+        version: '1',
+        id: 'local-policy',
+        mode: 'advisory',
+        disabledRuleIds: ['UT002'],
+        disabledFindingCount: 1,
+        activeFindingCount: 0,
+      },
+    });
+
+    expect(output).toContain(
+      '\nPolicy (advisory only)\nID: local-policy\nDisabled findings: 1\nActive findings: 0\n\nStatic source analysis only:',
+    );
+  });
 });

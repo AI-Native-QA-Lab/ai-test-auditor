@@ -97,4 +97,69 @@ describe('auditTestCases', () => {
       unassessed: 0,
     });
   });
+
+  it('attaches advisory policy evaluation without changing static findings or summary', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
+    temporaryRoots.push(root);
+    const filePath = join(root, 'fake.test.ts');
+    const policyPath = join(root, 'policy.json');
+    await writeFile(
+      filePath,
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    await writeFile(
+      policyPath,
+      '{"version":"1","id":"local-policy","mode":"advisory","disabledRuleIds":["UT002"]}',
+    );
+
+    const withoutPolicy = await auditPath(filePath);
+    const withPolicy = await auditPath(filePath, { policyPath });
+
+    expect(withoutPolicy.policy).toBeUndefined();
+    expect(withPolicy).toMatchObject({
+      findings: withoutPolicy.findings,
+      summary: withoutPolicy.summary,
+      policy: {
+        id: 'local-policy',
+        disabledFindingCount: 1,
+        activeFindingCount: 0,
+      },
+    });
+  });
+
+  it('does not attach policy when auditPath receives no policyPath', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
+    temporaryRoots.push(root);
+    const filePath = join(root, 'unassessed.test.ts');
+    await writeFile(
+      filePath,
+      "import { expect, test } from 'vitest'; test('ok', () => { expect(value).toBe('ok'); });",
+    );
+
+    expect((await auditPath(filePath)).policy).toBeUndefined();
+  });
+
+  it('attaches policy after converting parser diagnostics to INVALID findings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
+    temporaryRoots.push(root);
+    const filePath = join(root, 'broken.test.ts');
+    const policyPath = join(root, 'policy.json');
+    await writeFile(filePath, 'const = ;');
+    await writeFile(
+      policyPath,
+      '{"version":"1","id":"local-policy","mode":"advisory","disabledRuleIds":["UT002"]}',
+    );
+
+    const result = await auditPath(filePath, { policyPath });
+
+    expect(result).toMatchObject({
+      findings: [{ ruleId: 'PARSER001', classification: 'INVALID' }],
+      summary: { invalid: 1 },
+      policy: {
+        id: 'local-policy',
+        disabledFindingCount: 0,
+        activeFindingCount: 1,
+      },
+    });
+  });
 });
