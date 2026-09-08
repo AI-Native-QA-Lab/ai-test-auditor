@@ -47,6 +47,7 @@ git diff --check
 
 - Do not write production behavior before its failing test.
 - Record the focused RED and GREEN commands in the process record for material changes.
+- Before release validation, material behavior changes require recorded, observed focused RED and GREEN commands.
 - A test that passes before the intended behavior exists is not valid RED evidence; correct the test before implementation.
 
 ## CI

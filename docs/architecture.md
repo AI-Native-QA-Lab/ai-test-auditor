@@ -25,6 +25,10 @@ flowchart LR
   Mutation[Versioned mutation report] --> MutationAdapter[Mutation evidence adapter]
   MutationAdapter --> Text
   MutationAdapter --> Json
+  Policy[Versioned advisory policy] --> PolicyAdapter[Policy evaluator]
+  Findings --> PolicyAdapter
+  PolicyAdapter --> Text
+  PolicyAdapter --> Json
   Text --> CLI[ata review]
   Json --> CLI
   Source[(Reviewed source)] -. never executed .-> Extractor
@@ -40,12 +44,15 @@ flowchart LR
 | `audit` | Aggregates rules, per-test classifications, FTR, and score. | Does not generate `STRONG`. |
 | `changed-files` | Selects current changed test files from a verified local commit. | Does not fetch, execute source, or infer test relevance. |
 | `mutation` | Validates an opt-in versioned mutation artifact and derives threshold status. | Does not run a mutation command or change static audit semantics. |
+| `policy` | Validates an opt-in advisory policy and counts findings selected by its disabled rule IDs. | Does not remove findings, change classifications/summary/exit semantics, create a CI gate, or make a release decision. |
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
 
+`--policy <path>` supplies an advisory policy to the source-only audit. Invalid policy input exits `2`. The policy evaluator only reports disabled/active selection counts; it cannot remove findings, create a CI gate, or make a release decision.
+
 ## Data contracts
 
-`TestCase` preserves test name, file, framework, type, start line, callback source, and body. `Finding` preserves a stable ID, classification, severity, confidence, location, message, and remediation. An optional `MutationReport` preserves its engine label, recorded command, threshold and source, counts, score, and derived threshold status. `AuditResult` is the only reporter input and JSON output.
+`TestCase` preserves test name, file, framework, type, start line, callback source, and body. `Finding` preserves a stable ID, classification, severity, confidence, location, message, and remediation. An optional `MutationReport` preserves its engine label, recorded command, threshold and source, counts, score, and derived threshold status. An optional `PolicyEvaluation` preserves the advisory policy identity, disabled rule IDs, and disabled/active finding counts. `AuditResult` is the only reporter input and JSON output.
 
 ## Score model
 

@@ -19,6 +19,7 @@ The governing question is simple: **if production behavior is wrong, can this te
 - Ships a standalone, bilingual `test-quality-audit` Skill and evidence-bounded prompts.
 - Loads optional, versioned mutation evidence through `--mutation-report` without running a mutation tool.
 - Selects current supported test files changed since a local commit with `--changed-since <ref>`.
+- Loads an optional versioned `--policy <path>` file for advisory presentation and selection counts.
 
 ## What the tool does not do
 
@@ -70,15 +71,34 @@ node dist/cli.js review benchmarks --format json
 node dist/cli.js review . --changed-since HEAD~1
 ```
 
-The installed package exposes the same command as `ata review [path]`; a source checkout can use `node dist/cli.js review [path]`. Both default to the current directory and never import or execute target source.
+## v0.6.0 advisory policy
+
+Pass an explicit, local JSON policy to annotate the unchanged source-only audit:
+
+```bash
+node dist/cli.js review ./tests --policy ./audit-policy.json --format json
+```
+
+```json
+{
+  "version": "1",
+  "id": "local-review-policy",
+  "mode": "advisory",
+  "disabledRuleIds": ["UT002"]
+}
+```
+
+`disabledRuleIds` is optional and contains unique non-empty rule IDs. Policy is advisory only: it reports disabled and active finding counts, but does not remove findings or change static classifications, the summary, FTR, Trust Score, or exit codes. Invalid policy input exits `2`. This is not a default CI gate and does not make a release decision.
+
+The installed package exposes the same command as `ata review [path]`; a source checkout can use `node dist/cli.js review [path]`. Both default to the current directory and never import or execute target source. The `--changed-since` ref is local; it selects only current supported test files and does not infer production-code-to-test relevance.
 
 ### Exit codes
 
-| Code | Meaning                                                                               |
-| ---- | ------------------------------------------------------------------------------------- |
-| `0`  | No deterministic `FAKE` finding was emitted. This is not proof that tests are strong. |
-| `1`  | At least one deterministic `FAKE` finding was emitted.                                |
-| `2`  | The command, input path, or selected source is invalid (including `PARSER001`).       |
+| Code | Meaning                                                                                               |
+| ---- | ----------------------------------------------------------------------------------------------------- |
+| `0`  | No deterministic `FAKE` finding was emitted. This is not proof that tests are strong.                 |
+| `1`  | At least one deterministic `FAKE` finding was emitted.                                                |
+| `2`  | The command, invalid policy input, input path, or selected source is invalid (including `PARSER001`). |
 
 ## Example
 

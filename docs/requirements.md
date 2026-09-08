@@ -21,17 +21,19 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 
 ## In scope
 
-- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>]`.
+- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>]`.
 - AST extraction from supported JS, TS, and TSX test-source conventions.
 - Deterministic rules in the public catalog.
 - Text and JSON reports, source locations, FTR, and a transparent heuristic score.
 - Changed-file selection against a local commit, limited to current supported test files; it does not infer production-code-to-test relevance.
+- A supplied version `1` advisory policy may report disabled/active selection counts only. It does not change static classifications, summary values, FTR, Trust Score, or exit semantics.
+- A supplied, versioned semantic report may be validated and displayed as offline advisory evidence; no model is executed and it does not change static classifications or exit semantics.
 - English-first public documentation, Chinese translation, benchmark fixtures, CI, and standalone Skill assets.
 
 ## Out of scope
 
 - Executing a test, importing test code, resolving runtime dependencies, or proving a test is runnable.
-- LLM assessment, semantic intent inference, running mutation testing, coverage analysis, flaky-test detection, or GitHub PR annotations. A supplied mutation-evidence artifact may be validated and displayed, but is not executed or treated as a gate.
+- Executing an LLM, generating semantic intent inferences, running mutation testing, coverage analysis, flaky-test detection, or GitHub PR annotations. A supplied mutation-evidence artifact may be validated and displayed, but is not executed or treated as a gate.
 - A `STRONG` classification based on absence of static findings.
 - Framework support beyond the documented direct Jest/Vitest/Playwright callback conventions.
 
@@ -50,7 +52,7 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 - A supported file or directory is scanned without executing its source.
 - Each emitted finding carries rule ID, classification, severity, confidence, file path, line, message, and remediation.
 - The text report is a human-readable projection of the audit result; JSON contains the complete structured public result contract.
-- Exit codes are `0` for no `FAKE`, `1` for one or more `FAKE`, and `2` for invalid command, input, semantic/mutation report, or selected source syntax.
+- Exit codes are `0` for no `FAKE`, `1` for one or more `FAKE`, and `2` for invalid command, invalid policy, input, semantic/mutation report, or selected source syntax.
 - The README, Chinese README, rule catalog, architecture, roadmap, development guide, process record, and Skill assets describe only implemented behavior.
 
 ## Success signals and limits
