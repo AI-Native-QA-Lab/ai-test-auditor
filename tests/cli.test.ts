@@ -50,7 +50,7 @@ describe('ata review', () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.5.0');
+    expect(invocation.stdout).toContain('0.6.0');
   });
 
   it('returns 1 and JSON when a deterministic FAKE finding exists', async () => {
@@ -127,6 +127,85 @@ describe('ata review', () => {
     });
   });
 
+  it('preserves INVALID exit precedence when policy accompanies PARSER001 and UT002', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    await writeFile(join(root, 'broken.test.ts'), 'const = ;');
+    const policyPath = join(root, 'policy.json');
+    await writeFile(
+      policyPath,
+      '{"version":"1","id":"local-policy","mode":"advisory","disabledRuleIds":["UT002"]}',
+    );
+
+    const invocation = await invoke([
+      'review',
+      root,
+      '--policy',
+      policyPath,
+      '--format',
+      'json',
+    ]);
+
+    expect(invocation.code).toBe(2);
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      findings: [
+        { ruleId: 'UT002', classification: 'FAKE' },
+        { ruleId: 'PARSER001', classification: 'INVALID' },
+      ],
+      summary: { fake: 1, invalid: 1 },
+      policy: {
+        id: 'local-policy',
+        disabledFindingCount: 1,
+        activeFindingCount: 1,
+      },
+    });
+  });
+
+  it('attaches advisory policy while preserving a disabled static FAKE exit code', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    const policyPath = join(root, 'policy.json');
+    await writeFile(
+      policyPath,
+      '{"version":"1","id":"local-policy","mode":"advisory","disabledRuleIds":["UT002"]}',
+    );
+
+    const invocation = await invoke([
+      'review',
+      root,
+      '--policy',
+      policyPath,
+      '--format',
+      'json',
+    ]);
+
+    expect(invocation.code).toBe(1);
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      findings: [{ ruleId: 'UT002', classification: 'FAKE' }],
+      summary: { fake: 1 },
+      policy: {
+        id: 'local-policy',
+        disabledFindingCount: 1,
+        activeFindingCount: 0,
+      },
+    });
+  });
+
+  it('returns 2 and a Policy error for an invalid policy', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('ok', () => { expect(value).toBe('ok'); });",
+    );
+    const policyPath = join(root, 'policy.json');
+    await writeFile(policyPath, '{}');
+
+    const invocation = await invoke(['review', root, '--policy', policyPath]);
+
+    expect(invocation.code).toBe(2);
+    expect(invocation.stderr).toMatch(/^Error: Policy/);
+  });
+
   it('documents all exit codes in review help', async () => {
     const invocation = await invoke(['review', '--help']);
 
@@ -134,6 +213,16 @@ describe('ata review', () => {
     expect(invocation.stdout).toContain('0  No FAKE findings');
     expect(invocation.stdout).toContain('1  One or more FAKE findings');
     expect(invocation.stdout).toContain('2  Invalid command or input');
+    expect(invocation.stdout).toContain('--policy <path>');
+  });
+
+  it('documents the exact configuration file-selection description in review help', async () => {
+    const invocation = await invoke(['review', '--help']);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stdout.replace(/\s+/g, ' ')).toContain(
+      'JSON configuration file with include and exclude arrays',
+    );
   });
 
   it('uses config excludes to restrict audited files', async () => {

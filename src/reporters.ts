@@ -79,6 +79,16 @@ export function renderText(result: AuditResult): string {
     );
   }
 
+  if (result.policy) {
+    lines.push(
+      '',
+      'Policy (advisory only)',
+      `ID: ${result.policy.id}`,
+      `Disabled findings: ${result.policy.disabledFindingCount}`,
+      `Active findings: ${result.policy.activeFindingCount}`,
+    );
+  }
+
   lines.push(
     '',
     'Static source analysis only: tests were not executed, and runtime behavior was not assessed.',

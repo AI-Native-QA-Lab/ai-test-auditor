@@ -21,6 +21,8 @@
 - 通过 `ata review` 提供文本或 JSON 输出。
 - 内置独立的中英文 `test-quality-audit` Skill 与有证据边界的 Prompt。
 - 通过 `--mutation-report` 读取可选、版本化的变异证据，但不运行 mutation 工具。
+- 通过 `--changed-since <ref>` 选择相对于本地提交发生变更的当前支持测试文件。
+- 通过可选的版本化 `--policy <path>` 文件提供建议性的展示与选择计数。
 
 ## 工具不做什么
 
@@ -67,17 +69,37 @@ node dist/cli.js review ./tests
 ```bash
 node dist/cli.js review tests/checkout.e2e.ts --type e2e
 node dist/cli.js review benchmarks --format json
+node dist/cli.js review . --changed-since HEAD~1
 ```
 
-安装后的包可通过 `ata review [path]` 运行；源码 checkout 使用 `node dist/cli.js review [path]`。两者默认审计当前目录，且绝不会 import 或执行目标源码。
+## v0.6.0 建议性策略
+
+传入显式的本地 JSON 策略，为不变的纯源码审计附加建议性说明：
+
+```bash
+node dist/cli.js review ./tests --policy ./audit-policy.json --format json
+```
+
+```json
+{
+  "version": "1",
+  "id": "local-review-policy",
+  "mode": "advisory",
+  "disabledRuleIds": ["UT002"]
+}
+```
+
+`disabledRuleIds` 可省略，且只能包含唯一的非空规则 ID。策略仅为 advisory：它报告禁用和活跃发现项计数，但不移除发现项，也不改变静态分类、汇总、FTR、Trust Score 或退出码。无效策略输入返回退出码 `2`。它不是默认 CI 门禁，也不作发布决定。
+
+安装后的包可通过 `ata review [path]` 运行；源码 checkout 使用 `node dist/cli.js review [path]`。两者默认审计当前目录，且绝不会 import 或执行目标源码。`--changed-since` 的 ref 是本地提交；它只选择当前支持的测试文件，不会推断生产代码与测试之间的关联。
 
 ### 退出码
 
-| 代码 | 含义                                                 |
-| ---- | ---------------------------------------------------- |
-| `0`  | 未输出确定性的 `FAKE` 发现项；这不表示测试已经很强。 |
-| `1`  | 至少输出一条确定性的 `FAKE` 发现项。                 |
-| `2`  | 命令、输入路径或选中的源码无效（包括 `PARSER001`）。 |
+| 代码 | 含义                                                               |
+| ---- | ------------------------------------------------------------------ |
+| `0`  | 未输出确定性的 `FAKE` 发现项；这不表示测试已经很强。               |
+| `1`  | 至少输出一条确定性的 `FAKE` 发现项。                               |
+| `2`  | 命令、无效策略输入、输入路径或选中的源码无效（包括 `PARSER001`）。 |
 
 ## 规则与边界
 

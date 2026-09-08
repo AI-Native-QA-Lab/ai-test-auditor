@@ -1,5 +1,17 @@
 # Implementation Record
 
+## 2026-09-07 — v0.6.0 advisory policy public-contract completion
+
+The public contract names `--policy` as an explicit version `1`, `mode: "advisory"` input to the source-only audit. It only reports disabled/active selection counts; it neither removes findings nor changes classifications, summary/FTR/Trust Score, exit semantics, CI-gate behavior, or release decisions. The matching English and Chinese README, roadmap, architecture, rules, Skill, prompts, reference, and eval material retain that boundary.
+
+Focused documentation-contract RED: `npx vitest run tests/docs-contract.test.ts` failed with 8 expected missing markers: `0.6.0` and source-only-audit wording in both READMEs and roadmaps. GREEN: after the smallest bilingual marker additions, the same command passed (1 test). Full validation then recorded `npm test` as 13 files / 131 tests passed, `npm run lint` and `npm run typecheck` passed, `npm run format:check` passed after formatting `docs/roadmap.md`, `npm run build` passed, `node dist/cli.js review benchmarks --format json` returned the expected exit `1` with 6 `FAKE` and 1 `WEAK` findings, and `git diff --check` passed. No reviewed source, tests, model, or mutation command was executed by policy handling.
+
+Observed policy implementation evidence: Task 3 ran `npx vitest run tests/core/policy.test.ts`; RED failed because `src/core/policy.ts` did not exist, then GREEN passed 11 tests. Task 4 ran `npx vitest run tests/core/audit.test.ts tests/cli.test.ts tests/reporters.test.ts`; RED showed the expected missing policy attachment and CLI failures, then final GREEN passed 38 tests. These records are retained alongside the actual documentation-contract RED/GREEN and full-validation results above.
+
+## 2026-09-07 — historical TDD-evidence limit
+
+For v0.3 and v0.5, recoverable records of observed focused RED and GREEN commands are unavailable. historical RED/GREEN evidence is not recorded. This entry makes no retrospective TDD claim and does not invent past commands or outcomes. Future material behavior changes require observed focused RED and GREEN command records before release validation.
+
 ## 2026-09-05 — v0.4 offline mutation evidence
 
 Added a version `1` mutation-report adapter behind `--mutation-report`. Evidence requires an engine label, recorded command, threshold provenance, counts, and score consistency. The recorded command is never executed; threshold status is advisory and does not alter static findings, classifications, FTR, Trust Score, or exit codes.

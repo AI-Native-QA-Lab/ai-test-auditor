@@ -31,6 +31,10 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 - `PARSER001` reports source syntax only; it does not execute, resolve, or type-check the test at runtime.
 - Unflagged tests are deliberately `UNASSESSED`.
 
+## Advisory policy boundary
+
+An optional `--policy` file is an input to this source-only audit. Its advisory `disabledRuleIds` affect only policy presentation and disabled/active selection counts. They never remove a finding or change a rule classification, severity, confidence, static summary, FTR, Trust Score, or exit code; policy is not a CI gate or release decision. Invalid policy input exits `2`.
+
 ## Adding a rule
 
 Write a minimal failing test, verify it fails for the missing behavior, then add the smallest AST predicate. Give the rule a stable namespace ID, an explicit evidence boundary in the message/remediation, and both positive and representative negative test cases. Update this catalog and the Chinese translation in the same change.
