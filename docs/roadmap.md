@@ -22,7 +22,7 @@
 | 0.8   | Planned: CI-neutral adapter.                                                        | Separate maintainer decision, adapter contract, and no delivery claim.          |
 | 0.9   | Planned: GitHub examples.                                                           | Separate maintainer decision, example validation, and no delivery claim.        |
 | 1.0   | Planned: opt-in policy-gate integration.                                            | Opt-in configuration, CI samples, and documented failure semantics.             |
-| 2.0   | Separately planned: runtime, mutation, and LLM adapters.                            | Separate design, safety review, and implementation evidence; no delivery claim. |
+| 2.0   | Separately planned: runtime, mutation, and LLM adapters; optional static-first AI assist after v1.0. | Separate design, safety review, and implementation evidence; no delivery claim. |
 
 ## Sequencing principles
 
@@ -31,7 +31,7 @@
 3. Prefer precision and explainability over a large rule count.
 4. A CI gate must remain opt-in until stable, measured false-positive behavior exists.
 
-v0.7 through v0.9 remain source-only and advisory, preserving the source-only/advisory boundary: they do not execute reviewed source or change the static meaning of findings. v1.0 remains source-only and is a stable explicit opt-in quality gate, blocking only when a repository policy enables it. v2.0 runtime, mutation, and LLM adapters require a separate design and evidence.
+v0.7 through v0.9 remain source-only and advisory, preserving the source-only/advisory boundary: they do not execute reviewed source or change the static meaning of findings. v1.0 remains source-only and is a stable explicit opt-in quality gate, blocking only when a repository policy enables it. v2.0 runtime, mutation, and LLM adapters require a separate design and evidence. Optional AI assist is static-first and post-v1.0 only: default off, advisory-only, never emits `FAKE`/`WEAK`/`STRONG`/`INVALID`, and never changes static summary, FTR, Trust Score, exit semantics, or gate inputs. See [`docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`](./superpowers/specs/2026-09-08-optional-ai-assist-design.md).
 
 ## v0.2 compatibility matrix
 
