@@ -50,7 +50,42 @@ describe('ata review', () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.6.0');
+    expect(invocation.stdout).toContain('0.7.0');
+  });
+
+  it('keeps a matching baseline FAKE exit code and returns baseline JSON', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    const baselinePath = join(root, 'baseline.json');
+    await writeFile(
+      baselinePath,
+      JSON.stringify({
+        version: '1',
+        id: 'main',
+        findings: [
+          {
+            ruleId: 'UT002',
+            filePath: 'example.test.ts',
+            line: 1,
+            classification: 'FAKE',
+            severity: 'CRITICAL',
+          },
+        ],
+      }),
+    );
+    const invocation = await invoke([
+      'review',
+      root,
+      '--baseline',
+      baselinePath,
+      '--format',
+      'json',
+    ]);
+    expect(invocation.code).toBe(1);
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      baseline: { id: 'main', historicalFindingCount: 1, newFindingCount: 0 },
+    });
   });
 
   it('returns 1 and JSON when a deterministic FAKE finding exists', async () => {

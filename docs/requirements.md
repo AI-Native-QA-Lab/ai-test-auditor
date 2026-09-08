@@ -21,12 +21,13 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 
 ## In scope
 
-- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>]`.
+- Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>] [--baseline <path>]`.
 - AST extraction from supported JS, TS, and TSX test-source conventions.
 - Deterministic rules in the public catalog.
 - Text and JSON reports, source locations, FTR, and a transparent heuristic score.
 - Changed-file selection against a local commit, limited to current supported test files; it does not infer production-code-to-test relevance.
 - A supplied version `1` advisory policy may report disabled/active selection counts only. It does not change static classifications, summary values, FTR, Trust Score, or exit semantics.
+- A supplied version `1` baseline may report historical/new finding identity counts only. Historical does not accept a finding or change static classifications, summary values, FTR, Trust Score, policy counts, or exit semantics; invalid baseline input exits `2`.
 - A supplied, versioned semantic report may be validated and displayed as offline advisory evidence; no model is executed and it does not change static classifications or exit semantics.
 - English-first public documentation, Chinese translation, benchmark fixtures, CI, and standalone Skill assets.
 

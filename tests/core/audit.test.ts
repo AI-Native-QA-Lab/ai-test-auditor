@@ -139,6 +139,41 @@ describe('auditTestCases', () => {
     expect((await auditPath(filePath)).policy).toBeUndefined();
   });
 
+  it('attaches baseline counts without changing static findings or summary', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
+    temporaryRoots.push(root);
+    const filePath = join(root, 'fake.test.ts');
+    const baselinePath = join(root, 'baseline.json');
+    await writeFile(
+      filePath,
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    await writeFile(
+      baselinePath,
+      JSON.stringify({
+        version: '1',
+        id: 'main',
+        findings: [
+          {
+            ruleId: 'UT002',
+            filePath: 'fake.test.ts',
+            line: 1,
+            classification: 'FAKE',
+            severity: 'CRITICAL',
+          },
+        ],
+      }),
+    );
+
+    const withoutBaseline = await auditPath(filePath);
+    const withBaseline = await auditPath(filePath, { baselinePath });
+    expect(withBaseline).toMatchObject({
+      findings: withoutBaseline.findings,
+      summary: withoutBaseline.summary,
+      baseline: { id: 'main', historicalFindingCount: 1, newFindingCount: 0 },
+    });
+  });
+
   it('attaches policy after converting parser diagnostics to INVALID findings', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
     temporaryRoots.push(root);

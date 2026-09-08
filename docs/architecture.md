@@ -45,6 +45,7 @@ flowchart LR
 | `changed-files` | Selects current changed test files from a verified local commit. | Does not fetch, execute source, or infer test relevance. |
 | `mutation` | Validates an opt-in versioned mutation artifact and derives threshold status. | Does not run a mutation command or change static audit semantics. |
 | `policy` | Validates an opt-in advisory policy and counts findings selected by its disabled rule IDs. | Does not remove findings, change classifications/summary/exit semantics, create a CI gate, or make a release decision. |
+| `baseline` | Validates an opt-in versioned baseline and counts current findings whose stable identities are historical. | Does not accept, remove, change, or suppress findings, scores, policy counts, or exit semantics. |
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
 

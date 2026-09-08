@@ -13,6 +13,7 @@ test_type: <unit|api|e2e|unknown>
 source: <paste source>
 optional_cli_report: <paste JSON or text output>
 optional_policy: <paste advisory policy JSON>
+optional_baseline: <paste advisory baseline JSON>
 </test_context>
 ```
 
@@ -24,6 +25,7 @@ optional_policy: <paste advisory policy JSON>
 4. State that an unflagged test is `UNASSESSED`; never infer `STRONG` from lack of findings.
 5. Keep proposed remediations behavior-focused and label assumptions.
 6. Treat a supplied advisory policy as source-only audit input: it may explain disabled/active selection counts only. It cannot remove findings, alter classifications, summary, or exit semantics, act as a CI gate, or make a release decision.
+7. Treat a supplied version `1` baseline as identity membership only. Historical findings are not accepted, waived, resolved, or strong, and baseline counts cannot change static findings, scores, policy counts, or exit semantics.
 
 ## Response format
 
