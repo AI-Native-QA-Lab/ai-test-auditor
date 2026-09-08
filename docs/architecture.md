@@ -46,10 +46,13 @@ flowchart LR
 | `mutation` | Validates an opt-in versioned mutation artifact and derives threshold status. | Does not run a mutation command or change static audit semantics. |
 | `policy` | Validates an opt-in advisory policy and counts findings selected by its disabled rule IDs. | Does not remove findings, change classifications/summary/exit semantics, create a CI gate, or make a release decision. |
 | `baseline` | Validates an opt-in versioned baseline and counts current findings whose stable identities are historical. | Does not accept, remove, change, or suppress findings, scores, policy counts, or exit semantics. |
+| `decision` | Validates a versioned static snapshot and projects an advisory decision. | Does not execute source, consume semantic/mutation evidence, create a CI gate, or alter `review`. |
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
 
 `--policy <path>` supplies an advisory policy to the source-only audit. Invalid policy input exits `2`. The policy evaluator only reports disabled/active selection counts; it cannot remove findings, create a CI gate, or make a release decision.
+
+`ata decision <envelope>` is an advisory decision adapter with valid exit code `0`; malformed envelopes exit `2` and produce no partial decision output.
 
 ## Data contracts
 

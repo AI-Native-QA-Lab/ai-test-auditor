@@ -46,11 +46,82 @@ async function invoke(args: string[]): Promise<{
 }
 
 describe('ata review', () => {
+  it('emits an advisory decision with exit code 0 for a valid static snapshot', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
+    );
+    const envelopePath = join(root, 'decision.json');
+    await writeFile(
+      envelopePath,
+      JSON.stringify({
+        version: '1',
+        audit: {
+          tests: [
+            {
+              filePath: 'example.test.ts',
+              name: 'fake',
+              framework: 'vitest',
+              type: 'unit',
+              line: 1,
+              source: '() => { expect(true).toBe(true); }',
+              body: '{ expect(true).toBe(true); }',
+            },
+          ],
+          findings: [
+            {
+              ruleId: 'UT002',
+              severity: 'CRITICAL',
+              classification: 'FAKE',
+              confidence: 'HIGH',
+              filePath: 'example.test.ts',
+              line: 1,
+              message: 'The same literal appears on both sides.',
+              remediation: 'Use an independent expected value.',
+            },
+          ],
+          summary: {
+            total: 1,
+            assessed: 1,
+            fake: 1,
+            weak: 0,
+            invalid: 0,
+            unassessed: 0,
+            fakeTestRatio: 100,
+            trustScore: 75,
+          },
+        },
+      }),
+    );
+
+    const invocation = await invoke(['decision', envelopePath]);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stderr).toBe('');
+    expect(JSON.parse(invocation.stdout)).toMatchObject({
+      version: '1',
+      mode: 'advisory',
+      recommendation: 'attention',
+      reasonCodes: ['STATIC_FAKE_FINDINGS'],
+    });
+  });
+
+  it('returns 2 without partial output for an invalid decision envelope', async () => {
+    const root = await fixture('');
+    const envelopePath = join(root, 'decision.json');
+    await writeFile(envelopePath, '{}');
+
+    const invocation = await invoke(['decision', envelopePath]);
+
+    expect(invocation.code).toBe(2);
+    expect(invocation.stdout).toBe('');
+    expect(invocation.stderr).toMatch(/^Error: Decision/);
+  });
+
   it('reports the current package release version', async () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.7.0');
+    expect(invocation.stdout).toContain('0.8.0');
   });
 
   it('keeps a matching baseline FAKE exit code and returns baseline JSON', async () => {

@@ -118,6 +118,10 @@ node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
 
 The identity is rule ID, root-relative POSIX path, line, classification, and severity. Baseline output reports historical and new finding counts only. Historical does not mean accepted, safe, waived, or resolved; it does not change static classifications, findings, FTR, Trust Score, policy counts, or exit semantics. Invalid baseline input exits `2`.
 
+## v0.8.0 CI-neutral advisory decision
+
+`ata decision ./decision-envelope.json` converts a strict local version `1` static-audit envelope into a compact JSON advisory decision. A valid decision exits `0`; invalid or unsupported envelopes exit `2`. It rejects unknown fields and `semantic`/`mutation` attachments. Policy and baseline IDs are context only; the decision never acts as a CI gate, pass/fail result, waiver, or release decision.
+
 ### Exit codes
 
 | Code | Meaning                                                                                               |

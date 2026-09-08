@@ -89,6 +89,51 @@ export interface AuditSummary {
   readonly trustScore: number;
 }
 
+export type DecisionRecommendation =
+  'invalid-static-input' | 'attention' | 'no-static-fake-findings';
+
+export type DecisionReasonCode =
+  | 'STATIC_INVALID_INPUT'
+  | 'STATIC_FAKE_FINDINGS'
+  | 'STATIC_WEAK_FINDINGS'
+  | 'NO_STATIC_FAKE_FINDINGS';
+
+export interface DecisionAuditContext {
+  readonly policyId?: string;
+  readonly baselineId?: string;
+}
+
+export interface DecisionPolicyContext {
+  readonly version: '1';
+  readonly id: string;
+  readonly mode: 'advisory';
+}
+
+export interface DecisionBaselineContext {
+  readonly version: '1';
+  readonly id: string;
+}
+
+export interface DecisionEnvelope {
+  readonly version: '1';
+  readonly audit: {
+    readonly tests: readonly TestCase[];
+    readonly findings: readonly Finding[];
+    readonly summary: AuditSummary;
+    readonly policy?: DecisionPolicyContext;
+    readonly baseline?: DecisionBaselineContext;
+  };
+}
+
+export interface AdvisoryDecision {
+  readonly version: '1';
+  readonly mode: 'advisory';
+  readonly recommendation: DecisionRecommendation;
+  readonly reasonCodes: readonly DecisionReasonCode[];
+  readonly staticSummary: Pick<AuditSummary, 'fake' | 'weak' | 'invalid'>;
+  readonly context: DecisionAuditContext;
+}
+
 export interface AuditResult {
   readonly tests: readonly TestCase[];
   readonly findings: readonly Finding[];

@@ -33,6 +33,10 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 
 ## Advisory policy boundary
 
+## CI-neutral decision boundary
+
+`ata decision` projects only validated static summary facts into a version `1` advisory decision. It rejects semantic/mutation attachments and unknown fields; policy/baseline IDs are context only. A valid decision returns `0`, but it is not a CI gate, waiver, release decision, or proof that unflagged tests are `STRONG`.
+
 An optional `--policy` file is an input to this source-only audit. Its advisory `disabledRuleIds` affect only policy presentation and disabled/active selection counts. They never remove a finding or change a rule classification, severity, confidence, static summary, FTR, Trust Score, or exit code; policy is not a CI gate or release decision. Invalid policy input exits `2`.
 
 ## Adding a rule
