@@ -22,6 +22,7 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 ## In scope
 
 - Node.js 20+ CLI: `ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>] [--baseline <path>]`.
+- `ata decision <envelope.json>` converts a strict local version `1` static snapshot into an advisory JSON result. It rejects unknown fields and semantic/mutation attachments; valid decisions return `0` and are not a CI gate.
 - AST extraction from supported JS, TS, and TSX test-source conventions.
 - Deterministic rules in the public catalog.
 - Text and JSON reports, source locations, FTR, and a transparent heuristic score.

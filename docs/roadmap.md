@@ -19,7 +19,7 @@
 | 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                                   | Rule catalog, false-positive analysis, integration tests.                       |
 | 0.6.0 | Delivered: advisory source-only audit policy presentation and selection counts.                      | Public contracts and the full documented validation gate.                       |
 | 0.7   | Delivered as v0.7.0: advisory baseline comparison.                                                   | Versioned identity artifact, deterministic counts, and full local validation.   |
-| 0.8   | Planned: CI-neutral adapter.                                                                         | Separate maintainer decision, adapter contract, and no delivery claim.          |
+| 0.8   | Delivered as v0.8.0: CI-neutral advisory decision adapter.                                           | Strict v1 envelope, stable reason codes, and full local validation.             |
 | 0.9   | Planned: GitHub examples.                                                                            | Separate maintainer decision, example validation, and no delivery claim.        |
 | 1.0   | Planned: opt-in policy-gate integration.                                                             | Opt-in configuration, CI samples, and documented failure semantics.             |
 | 2.0   | Separately planned: runtime, mutation, and LLM adapters; optional static-first AI assist after v1.0. | Separate design, safety review, and implementation evidence; no delivery claim. |

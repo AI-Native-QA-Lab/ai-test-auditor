@@ -13,6 +13,7 @@ description: 当需要审查 JavaScript 或 TypeScript Unit、API、Playwright �
 - 只能把提供的源码与 CLI JSON/文本输出当作证据；不得声称测试已执行、import 已解析、行为被观察、覆盖率被统计或 mutation 被杀死。
 - 将可选的 advisory 策略视为纯源码审计的输入：它可展示禁用/活跃选择计数，但不能移除静态发现项、改变分类或退出码、创建 CI 门禁或作发布决定。不得执行测试、模型或 mutation 命令。
 - 将可选的 version `1` 基线只视为建议性的身份证据：历史发现项不代表已接受或已豁免，且不改变发现项、分类、分数、策略计数或退出码。
+- 将 `ata decision` 输出仅视为版本化建议性摘要：它不是 CI 门禁、通过/失败结果、豁免或发布决定。
 - 未命中的测试为 `UNASSESSED`，不是 `STRONG`。
 - 英文输出读取 [SKILL.md](./SKILL.md) 与 `prompts/test-quality-audit.md`。
 

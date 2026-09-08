@@ -2,6 +2,14 @@
 
 # 实施过程记录
 
+## 2026-09-08 — v0.8.0 CI 无关的建议性决策
+
+新增 `ata decision <envelope.json>`：一个本地 version `1` 静态快照适配器，输出简洁的 `advisory` 决策。它拒绝未知字段和 semantic/mutation 附件，校验静态汇总与发现项的一致性，并仅将策略/基线 ID 作为上下文。有效决策返回 `0`，无效信封返回 `2`。它不执行被审计源码、变异命令、模型、provider SDK 或 CI 集成；它不是 CI 门禁、发布决定、豁免或通过/失败结果。
+
+已观察到 RED：`npx vitest run tests/core/decision.test.ts` 因 `src/core/decision.ts` 缺失失败；之后 `npx vitest run tests/cli.test.ts` 因 `decision` 为未知命令失败。最小模块和命令接入后，聚焦核心/CLI 测试 GREEN。未执行 CI、发布、打标或 Release。
+
+最终验证：`npm test` 通过 15 个测试文件 / 153 项测试；lint、typecheck、format check、build 和 `git diff --check` 通过。`node dist/cli.js review benchmarks --format json` 以预期退出码 `1` 返回静态发现项。构建后的 `node dist/cli.js decision` 冒烟测试以 `advisory`、`attention` 和 `STATIC_FAKE_FINDINGS` 返回 `0`。
+
 ## 2026-09-08 — v0.7.0 基线对比
 
 新增本地 version `1` 基线工件：以规则 ID、相对根目录 POSIX 路径、行号、分类和严重性组成稳定身份，只报告历史/新增发现项计数。历史项不是接受、豁免或质量背书；不会改变发现项、分类、汇总、FTR、Trust Score、策略计数或退出语义。无效基线返回退出码 `2`。

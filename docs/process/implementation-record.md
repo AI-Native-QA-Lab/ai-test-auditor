@@ -1,5 +1,13 @@
 # Implementation Record
 
+## 2026-09-08 — v0.8.0 CI-neutral advisory decision
+
+Added `ata decision <envelope.json>`, a local version `1` static-snapshot adapter that emits a compact `advisory` decision. It rejects unknown fields and semantic/mutation attachments, validates static summary values against findings, keeps policy/baseline IDs as context only, and returns `0` for valid decisions or `2` for invalid envelopes. It does not execute reviewed source, mutation commands, models, provider SDKs, or CI integrations; it is not a CI gate, release decision, waiver, or pass/fail result.
+
+Observed RED: `npx vitest run tests/core/decision.test.ts` failed because `src/core/decision.ts` was absent. `npx vitest run tests/cli.test.ts` then failed because `decision` was an unknown command. Focused core/CLI GREEN followed the minimal module and command integration. No CI, publish, tag, or release was performed.
+
+Final validation: `npm test` passed 15 test files / 153 tests; lint, typecheck, format check, build, and `git diff --check` passed. `node dist/cli.js review benchmarks --format json` returned its expected exit `1` with static findings. A built `node dist/cli.js decision` smoke test returned `0` with `advisory`, `attention`, and `STATIC_FAKE_FINDINGS`.
+
 ## 2026-09-08 — v0.7.0 baseline comparison
 
 Added a local version `1` baseline artifact whose stable identity is rule ID, root-relative POSIX path, line, classification, and severity. It reports historical/new counts only: historical is not acceptance, waiver, or quality evidence, and does not change findings, classifications, summary, FTR, Trust Score, policy counts, or exit semantics. Invalid baseline input exits `2`.
