@@ -2,6 +2,12 @@
 
 # 实施过程记录
 
+## 2026-09-08 — v0.7.0 基线对比
+
+新增本地 version `1` 基线工件：以规则 ID、相对根目录 POSIX 路径、行号、分类和严重性组成稳定身份，只报告历史/新增发现项计数。历史项不是接受、豁免或质量背书；不会改变发现项、分类、汇总、FTR、Trust Score、策略计数或退出语义。无效基线返回退出码 `2`。
+
+聚焦 RED：`npx vitest run tests/core/baseline.test.ts` 因 `src/core/baseline.ts` 不存在失败；`npx vitest run tests/core/audit.test.ts` 因缺少 baseline 附件失败；`npx vitest run tests/cli.test.ts tests/reporters.test.ts` 因 CLI flag、版本和文本区块缺失失败。相应 GREEN 均已观察到。完整验证：`npm test` 14 个文件 / 140 项通过，lint、typecheck、format check、build 与 `git diff --check` 通过；benchmark JSON 以预期退出码 `1` 返回。
+
 ## 2026-09-08 — 可选 AI 辅助延后到 v2.0
 
 记录产品决策：可选模型辅助采用静态优先、默认关闭、仅建议性，并在 v1.0 opt-in 门禁之后作为 v2.0 的一部分推进（先加固离线契约，再做显式 live 调用）。AI 辅助不得输出 `FAKE`/`WEAK`/`STRONG`/`INVALID`，也不得改变静态汇总、FTR、Trust Score、退出语义或门禁输入。近期 v0.7–v1.0 范围不变；未实现 live provider。设计见 `docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`。已同步更新中英文公开路线图的 v2.0 表述。

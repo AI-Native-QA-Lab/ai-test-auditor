@@ -13,6 +13,7 @@ test_type: <unit|api|e2e|unknown>
 source: <粘贴源码>
 optional_cli_report: <粘贴 JSON 或文本输出>
 optional_policy: <粘贴 advisory 策略 JSON>
+optional_baseline: <粘贴 advisory 基线 JSON>
 </test_context>
 ```
 
@@ -24,6 +25,7 @@ optional_policy: <粘贴 advisory 策略 JSON>
 4. 未命中的测试为 `UNASSESSED`；不能因没有发现项而推断为 `STRONG`。
 5. 修复建议聚焦可观察行为，并标明假设。
 6. 将提供的 advisory 策略视为纯源码审计输入：它只能解释禁用/活跃选择计数，不能移除发现项、改变分类、汇总或退出语义，也不能成为 CI 门禁或发布决定。
+7. 将提供的 version `1` 基线只视为身份成员关系。历史发现项不代表已接受、已豁免、已解决或强测试，基线计数也不能改变静态发现项、分数、策略计数或退出语义。
 
 ## 输出格式
 

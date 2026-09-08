@@ -93,6 +93,32 @@ node dist/cli.js review ./tests --policy ./audit-policy.json --format json
 
 安装后的包可通过 `ata review [path]` 运行；源码 checkout 使用 `node dist/cli.js review [path]`。两者默认审计当前目录，且绝不会 import 或执行目标源码。`--changed-since` 的 ref 是本地提交；它只选择当前支持的测试文件，不会推断生产代码与测试之间的关联。
 
+## v0.7.0 基线对比
+
+传入本地 version `1` 基线，按稳定身份标记本次发现项：
+
+```bash
+node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
+```
+
+```json
+{
+  "version": "1",
+  "id": "main",
+  "findings": [
+    {
+      "ruleId": "UT002",
+      "filePath": "tests/example.test.ts",
+      "line": 12,
+      "classification": "FAKE",
+      "severity": "CRITICAL"
+    }
+  ]
+}
+```
+
+身份由规则 ID、相对输入根目录的 POSIX 路径、行号、分类和严重性组成。基线只报告历史和新增发现项计数。历史项不代表已接受、安全、豁免或已解决；它不改变静态分类、发现项、FTR、Trust Score、策略计数或退出语义。无效基线输入返回退出码 `2`。
+
 ### 退出码
 
 | 代码 | 含义                                                               |

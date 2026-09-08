@@ -18,7 +18,7 @@
 | 0.4   | Delivered: offline mutation-evidence adapter.                                                        | Versioned schema, command/threshold provenance, parser and CLI contracts.       |
 | 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                                   | Rule catalog, false-positive analysis, integration tests.                       |
 | 0.6.0 | Delivered: advisory source-only audit policy presentation and selection counts.                      | Public contracts and the full documented validation gate.                       |
-| 0.7   | Planned: baseline comparison.                                                                        | Separate maintainer decision, fixture evidence, and no delivery claim.          |
+| 0.7   | Delivered as v0.7.0: advisory baseline comparison.                                                   | Versioned identity artifact, deterministic counts, and full local validation.   |
 | 0.8   | Planned: CI-neutral adapter.                                                                         | Separate maintainer decision, adapter contract, and no delivery claim.          |
 | 0.9   | Planned: GitHub examples.                                                                            | Separate maintainer decision, example validation, and no delivery claim.        |
 | 1.0   | Planned: opt-in policy-gate integration.                                                             | Opt-in configuration, CI samples, and documented failure semantics.             |

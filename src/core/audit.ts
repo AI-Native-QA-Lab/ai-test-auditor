@@ -1,11 +1,12 @@
 import { readFile, stat } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import { extractTestsWithDiagnostics } from './extractor.js';
 import { resolveSemanticProvider } from './semantic.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
 import { selectChangedFiles } from './changed-files.js';
 import { evaluatePolicy, loadPolicy } from './policy.js';
+import { compareBaseline, loadBaseline } from './baseline.js';
 import type {
   AuditResult,
   AuditSummary,
@@ -22,6 +23,7 @@ export interface AuditOptions {
   readonly configPath?: string;
   readonly changedSince?: string;
   readonly policyPath?: string;
+  readonly baselinePath?: string;
 }
 
 const supportedTestFile = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
@@ -120,16 +122,25 @@ export async function auditPath(
         selection: { ...selection, files: selectedFiles.sort() },
       }
     : withDiagnostics;
+  const baselinePath =
+    typeof options === 'string' ? undefined : options.baselinePath;
+  const withBaseline = baselinePath
+    ? {
+        ...auditedResult,
+        baseline: compareBaseline(
+          await loadBaseline(baselinePath),
+          auditedResult.findings,
+          inputStats.isDirectory() ? absolutePath : dirname(absolutePath),
+        ),
+      }
+    : auditedResult;
   const policyPath =
     typeof options === 'string' ? undefined : options.policyPath;
-  if (!policyPath) return auditedResult;
+  if (!policyPath) return withBaseline;
 
   return {
-    ...auditedResult,
-    policy: evaluatePolicy(
-      await loadPolicy(policyPath),
-      auditedResult.findings,
-    ),
+    ...withBaseline,
+    policy: evaluatePolicy(await loadPolicy(policyPath), withBaseline.findings),
   };
 }
 

@@ -159,4 +159,19 @@ describe('reporters', () => {
       '\nPolicy (advisory only)\nID: local-policy\nDisabled findings: 1\nActive findings: 0\n\nStatic source analysis only:',
     );
   });
+
+  it('renders advisory baseline counts without changing findings', () => {
+    const output = renderText({
+      ...result,
+      baseline: {
+        version: '1',
+        id: 'main',
+        historicalFindingCount: 1,
+        newFindingCount: 0,
+      },
+    });
+    expect(output).toContain(
+      'Baseline (advisory only)\nID: main\nHistorical findings: 1\nNew findings: 0',
+    );
+  });
 });
