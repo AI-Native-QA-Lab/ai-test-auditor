@@ -1,5 +1,9 @@
 # Implementation Record
 
+## 2026-09-08 — optional AI assist deferred to v2.0
+
+Recorded the product decision that optional model assistance is static-first, default-off, advisory-only, and scheduled after the v1.0 opt-in gate as part of v2.0 (offline contract hardening, then explicit live invocation). AI assist must not emit `FAKE`/`WEAK`/`STRONG`/`INVALID`, and must not change static summary, FTR, Trust Score, exit semantics, or gate inputs. Near-term v0.7–v1.0 scope is unchanged; no live provider implementation was added. Design: `docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`. Public roadmap v2.0 wording updated in English and Chinese.
+
 ## 2026-09-07 — v0.6.0 advisory policy public-contract completion
 
 The public contract names `--policy` as an explicit version `1`, `mode: "advisory"` input to the source-only audit. It only reports disabled/active selection counts; it neither removes findings nor changes classifications, summary/FTR/Trust Score, exit semantics, CI-gate behavior, or release decisions. The matching English and Chinese README, roadmap, architecture, rules, Skill, prompts, reference, and eval material retain that boundary.

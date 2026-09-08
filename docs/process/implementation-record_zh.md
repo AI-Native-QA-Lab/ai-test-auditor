@@ -2,6 +2,10 @@
 
 # 实施过程记录
 
+## 2026-09-08 — 可选 AI 辅助延后到 v2.0
+
+记录产品决策：可选模型辅助采用静态优先、默认关闭、仅建议性，并在 v1.0 opt-in 门禁之后作为 v2.0 的一部分推进（先加固离线契约，再做显式 live 调用）。AI 辅助不得输出 `FAKE`/`WEAK`/`STRONG`/`INVALID`，也不得改变静态汇总、FTR、Trust Score、退出语义或门禁输入。近期 v0.7–v1.0 范围不变；未实现 live provider。设计见 `docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`。已同步更新中英文公开路线图的 v2.0 表述。
+
 ## 2026-09-07 — v0.6.0 建议性策略公开契约完成
 
 公开契约将 `--policy` 定义为纯源码审计的显式 version `1`、`mode: "advisory"` 输入。它只报告禁用/活跃选择计数；不会移除发现项，也不改变分类、汇总/FTR/Trust Score、退出语义、CI 门禁行为或发布决定。对应的中英文 README、路线图、架构、规则、Skill、Prompt、参考资料和评估材料均保留该边界。
