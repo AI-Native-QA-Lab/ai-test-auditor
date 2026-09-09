@@ -37,3 +37,7 @@
 ## 2026-09-09 npm 运行时依赖修复
 
 发布后的 CLI 在全局安装环境中会加载 TypeScript Compiler API；因此 `typescript` 必须位于 `dependencies`，不能仅位于 `devDependencies`。`v1.0.2` 以补丁版本修正该 manifest 契约，并增加回归测试以防止再次遗漏。
+
+## 2026-09-09 发布产物回归测试
+
+npm CLI 的符号链接回归测试需要先生成 `dist/`；测试通过 Node 的模块解析定位 TypeScript 编译器，兼容干净 CI checkout 与共享依赖的本地 worktree。`v1.0.3` 只修复该验证前置条件，审计行为与 npm 运行时产物保持不变。
