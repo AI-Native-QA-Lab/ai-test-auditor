@@ -2,6 +2,14 @@
 
 # 实施过程记录
 
+## 2026-09-09 — v0.9.0 GitHub Actions 建议性参考工作流
+
+新增独立 opt-in 参考工作流 `.github/workflows/audit-reference.yml`，保留 `ci.yml` 不变。PR 运行从 PR base SHA 选择变更的受支持测试文件；手动运行必须提供 `base-ref`；工作流使用 `contents: read`、完整本地历史，不使用 GitHub API、token、PR 评论，也不执行被审计源码。它将静态审计 JSON 与 v1 投影后的建议性决策写入 Job Summary，随后返回静态审计原退出码。工作流本地投影会省略审计专用字段，并将策略/基线 ID 映射为严格 `DecisionEnvelope` 上下文形状。
+
+已观察到 RED：`npx vitest run tests/github-reference-workflow.test.ts` 先因投影脚本缺失失败，后因工作流缺失失败。`npx vitest run tests/docs-contract.test.ts` 因缺少 42 个 v0.9 公开标记失败。`npx vitest run tests/cli.test.ts` 因 CLI 仍报告 `0.8.0` 失败。聚焦 GREEN：投影/工作流测试通过 4 项；文档与版本回归通过。
+
+验证：`npm test` 通过 101 个文件 / 959 项测试，`npm run typecheck` 与 `npm run build` 通过，benchmark 审计以预期退出码 `1` 返回 6 个 `FAKE` 和 1 个 `WEAK`，`git diff --check` 通过。已修改文件的 lint 与 Prettier 检查通过。仓库范围的 `npm run lint` 与 `npm run format:check` 仍被宽泛扫描到的预存 `.worktrees/` 和 `.codex-backups/` 内容阻塞；未修改这些文件。未执行托管 GitHub Actions、Release、tag、commit 或 PR。
+
 ## 2026-09-08 — v0.8.0 CI 无关的建议性决策
 
 新增 `ata decision <envelope.json>`：一个本地 version `1` 静态快照适配器，输出简洁的 `advisory` 决策。它拒绝未知字段和 semantic/mutation 附件，校验静态汇总与发现项的一致性，并仅将策略/基线 ID 作为上下文。有效决策返回 `0`，无效信封返回 `2`。它不执行被审计源码、变异命令、模型、provider SDK 或 CI 集成；它不是 CI 门禁、发布决定、豁免或通过/失败结果。

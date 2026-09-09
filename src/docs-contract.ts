@@ -243,6 +243,77 @@ const decisionBoundaryDocuments: readonly PublicDocument[] = [
   },
 ];
 
+const githubReferenceDocuments: readonly PublicDocument[] = [
+  {
+    path: 'README.md',
+    terms: [
+      'v0.9.0 GitHub Actions reference workflow',
+      '`base-ref`',
+      '`--changed-since`',
+      '`contents: read`',
+      'does not create PR comments',
+    ],
+  },
+  {
+    path: 'README_ZH.md',
+    terms: [
+      'v0.9.0 GitHub Actions 参考工作流',
+      '`base-ref`',
+      '`--changed-since`',
+      '`contents: read`',
+      '不创建 PR 评论',
+    ],
+  },
+  {
+    path: 'docs/requirements.md',
+    terms: ['GitHub Actions reference workflow', 'base-ref', 'advisory'],
+  },
+  {
+    path: 'docs/zh/requirements.md',
+    terms: ['GitHub Actions 参考工作流', 'base-ref', '建议性'],
+  },
+  {
+    path: 'docs/architecture.md',
+    terms: ['audit-reference.yml', 'DecisionEnvelope', 'changed-since'],
+  },
+  {
+    path: 'docs/zh/architecture.md',
+    terms: ['audit-reference.yml', 'DecisionEnvelope', 'changed-since'],
+  },
+  {
+    path: 'docs/development.md',
+    terms: ['audit-reference.yml', 'base-ref', 'Job Summary'],
+  },
+  {
+    path: 'docs/zh/development.md',
+    terms: ['audit-reference.yml', 'base-ref', 'Job Summary'],
+  },
+  {
+    path: 'test-quality-audit/SKILL.md',
+    terms: ['GitHub Actions reference workflow', 'PR comments', 'base-ref'],
+  },
+  {
+    path: 'test-quality-audit/SKILL_ZH.md',
+    terms: ['GitHub Actions 参考工作流', 'PR 评论', 'base-ref'],
+  },
+  {
+    path: 'test-quality-audit/prompts/test-quality-audit.md',
+    terms: ['GitHub Actions', 'advisory decision', 'PR comment'],
+  },
+  {
+    path: 'test-quality-audit/prompts/test-quality-audit-zh.md',
+    terms: ['GitHub Actions', '建议性决策', 'PR 评论'],
+  },
+  {
+    path: 'test-quality-audit/references/rule-boundary.md',
+    terms: ['GitHub Actions reference workflow', 'base-ref', 'PR comment'],
+  },
+  {
+    path: 'test-quality-audit/evals/cases.md',
+    terms: ['`github-reference-workflow`', 'PR comments', 'advisory decision'],
+  },
+];
+
 export async function validateBilingualPublicMarkers(): Promise<string[]> {
   const violations: string[] = [];
   const contents = new Map<string, string>();
@@ -261,6 +332,10 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
     addMissingTerms(violations, document.path, content, document.terms);
   }
   for (const document of decisionBoundaryDocuments) {
+    const content = await readDocument(document.path, contents);
+    addMissingTerms(violations, document.path, content, document.terms);
+  }
+  for (const document of githubReferenceDocuments) {
     const content = await readDocument(document.path, contents);
     addMissingTerms(violations, document.path, content, document.terms);
   }

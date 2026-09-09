@@ -54,6 +54,8 @@ flowchart LR
 
 `ata decision <envelope>` is an advisory decision adapter with valid exit code `0`; malformed envelopes exit `2` and produce no partial decision output.
 
+`audit-reference.yml` projects changed-since audit JSON onto the strict `DecisionEnvelope` allowlist before invoking `decision`; audit-only metadata is not passed through.
+
 ## Data contracts
 
 `TestCase` preserves test name, file, framework, type, start line, callback source, and body. `Finding` preserves a stable ID, classification, severity, confidence, location, message, and remediation. An optional `MutationReport` preserves its engine label, recorded command, threshold and source, counts, score, and derived threshold status. An optional `PolicyEvaluation` preserves the advisory policy identity, disabled rule IDs, and disabled/active finding counts. `AuditResult` is the only reporter input and JSON output.

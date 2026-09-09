@@ -54,6 +54,8 @@ flowchart LR
 
 `ata decision <envelope>` 是建议性决策适配器：有效调用返回 `0`；无效信封返回 `2`，且不输出部分决策。
 
+`audit-reference.yml` 在调用 `decision` 前，将 changed-since 审计 JSON 投影到严格的 `DecisionEnvelope` 白名单；审计专用元数据不会透传。
+
 ## 数据契约
 
 `TestCase` 保留名称、文件、框架、类型、起始行、回调源码和函数体。`Finding` 保留稳定 ID、分类、严重性、置信度、位置、信息和修复建议。可选 `MutationReport` 保留引擎标识、已记录命令、阈值及来源、数量、分数和推导出的阈值状态。可选 `PolicyEvaluation` 保留建议性策略标识、禁用规则 ID 和禁用/活跃发现项计数。`AuditResult` 是唯一报告输入与 JSON 输出。

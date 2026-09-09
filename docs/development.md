@@ -53,3 +53,5 @@ git diff --check
 ## CI
 
 The GitHub workflow runs the same test, lint, typecheck, format check, and build commands under Node 20. It does not run reviewed benchmark sources as tests and does not make an external release decision.
+
+`audit-reference.yml` is a separate example: `pull_request` uses its base SHA, manual runs require `base-ref`, and both JSON artifacts are written to the GitHub Job Summary without PR comments.

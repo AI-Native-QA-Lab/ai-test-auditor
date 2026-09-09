@@ -1,5 +1,13 @@
 # Implementation Record
 
+## 2026-09-09 — v0.9.0 GitHub Actions advisory reference workflow
+
+Added `.github/workflows/audit-reference.yml` as a separate opt-in reference, preserving `ci.yml`. PR runs select changed supported test files from the PR base SHA; manual runs require `base-ref`; the workflow uses `contents: read`, full local history, and no GitHub API, token, PR comment, or reviewed-source execution. It writes static audit JSON and a v1 projected advisory decision to Job Summary, then re-emits the static audit exit code. The workflow-local projection omits audit-only fields and maps policy/baseline IDs to the strict `DecisionEnvelope` context shape.
+
+Observed RED: `npx vitest run tests/github-reference-workflow.test.ts` failed because the projection script was absent, then because the workflow was absent. `npx vitest run tests/docs-contract.test.ts` failed with 42 missing v0.9 public markers. `npx vitest run tests/cli.test.ts` failed because the CLI reported `0.8.0`. Focused GREEN: projection/workflow tests passed 4 tests; documentation and version regressions passed.
+
+Validation: `npm test` passed 101 files / 959 tests, `npm run typecheck` and `npm run build` passed, the benchmark audit returned expected exit `1` with 6 `FAKE` and 1 `WEAK`, and `git diff --check` passed. The touched-file lint and Prettier checks passed. The repository-wide `npm run lint` and `npm run format:check` remain blocked by pre-existing `.worktrees/` and `.codex-backups/` content scanned by their broad commands; no such files were changed. No hosted GitHub Actions run, release, tag, commit, or PR was performed.
+
 ## 2026-09-08 — v0.8.0 CI-neutral advisory decision
 
 Added `ata decision <envelope.json>`, a local version `1` static-snapshot adapter that emits a compact `advisory` decision. It rejects unknown fields and semantic/mutation attachments, validates static summary values against findings, keeps policy/baseline IDs as context only, and returns `0` for valid decisions or `2` for invalid envelopes. It does not execute reviewed source, mutation commands, models, provider SDKs, or CI integrations; it is not a CI gate, release decision, waiver, or pass/fail result.

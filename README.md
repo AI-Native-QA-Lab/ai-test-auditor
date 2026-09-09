@@ -122,6 +122,10 @@ The identity is rule ID, root-relative POSIX path, line, classification, and sev
 
 `ata decision ./decision-envelope.json` converts a strict local version `1` static-audit envelope into a compact JSON advisory decision. A valid decision exits `0`; invalid or unsupported envelopes exit `2`. It rejects unknown fields and `semantic`/`mutation` attachments. Policy and baseline IDs are context only; the decision never acts as a CI gate, pass/fail result, waiver, or release decision.
 
+## v0.9.0 GitHub Actions reference workflow
+
+`.github/workflows/audit-reference.yml` is an opt-in GitHub Actions reference workflow. On `pull_request` it uses the PR base SHA; manual `workflow_dispatch` runs require a `base-ref`. It runs `--changed-since`, writes the static audit and advisory decision to the Job Summary, and preserves the audit exit code. It uses only `contents: read`, does not create PR comments, use credentials, or execute reviewed source.
+
 ### Exit codes
 
 | Code | Meaning                                                                                               |
