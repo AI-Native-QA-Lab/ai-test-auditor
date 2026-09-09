@@ -29,3 +29,7 @@
 ## 2026-09-09 文档收敛
 
 本次将已完成版本的过程资料抽象为中文历史参考，双语项目文档保留当前使用契约，Context 记录稳定基线。已验证：文档契约测试、完整 `npm test`（175 项）、lint、typecheck、format check、build 和 `git diff --check` 通过；基准审计按预期以退出码 `1` 返回确定性 `FAKE` 发现项。
+
+## 2026-09-09 npm 分发边界
+
+`v1.0.1` 将 npm 发布物限制为编译后的 `dist/`、双语 README 与许可证；源码、测试、历史过程资料和 CI 配置保留在 GitHub 仓库，不进入运行时 CLI 包。`prepack` 在打包和发布前执行 TypeScript 构建，避免分发过期产物。
