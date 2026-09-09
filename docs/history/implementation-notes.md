@@ -1,0 +1,31 @@
+# 实施经验
+
+## 迁移清单
+
+| 旧资料                                   | 新的规范位置                                                     |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| 已完成的 v0.1–v1.0 specs 与 plans        | 本 `docs/history/` 文档集与当前项目文档                          |
+| `docs/process/implementation-record*.md` | `docs/history/implementation-notes.md`                           |
+| 待实施的 optional AI assist 设计         | `docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md` |
+
+## 可复用实践
+
+### 材料决策
+
+实现先区分当前事实、假设和未来工作。行为变化先有独立设计和批准；Roadmap 是未来版本计划的唯一详细来源。公开项目文档保持中英文同步，过程资料和历史参考以中文维护。
+
+### 验证命令
+
+行为变更遵循已观察到的 RED/GREEN；交付前运行 `npm test`、`npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`、`node dist/cli.js review benchmarks --format json` 与 `git diff --check`。基准审计预期返回 `1`，因为它包含确定性 `FAKE` fixture。
+
+### 工程与审查
+
+参考工作流使用最小权限，审计和 gate 的 `0`、`1`、`2` 必须被明确处理。提交前精确暂存并检查缓存差异；审查发现要先复现或用回归测试确认，再做最小修复。
+
+### 已知限制
+
+静态审计不证明运行时质量、覆盖率、变异得分或发布就绪性。未来 runtime、mutation 与模型能力必须是显式、独立、可验证的适配层，且不能改写 v1.0 静态结论。
+
+## 2026-09-09 文档收敛
+
+本次将已完成版本的过程资料抽象为中文历史参考，双语项目文档保留当前使用契约，Context 记录稳定基线。已验证：文档契约测试、完整 `npm test`（175 项）、lint、typecheck、format check、build 和 `git diff --check` 通过；基准审计按预期以退出码 `1` 返回确定性 `FAKE` 发现项。

@@ -23,6 +23,7 @@ AI 辅助开发可能产生能编译、能运行、甚至提高覆盖率，却�
 
 - Node.js 20+ CLI：`ata review [path] --type unit|api|e2e|auto --format text|json [--changed-since <local-ref>] [--policy <path>] [--baseline <path>]`。
 - `ata decision <envelope.json>` 将严格的本地 version `1` 静态快照转换为建议性 JSON 结果。它拒绝未知字段和 semantic/mutation 附件；有效决策返回 `0`，且不是 CI 门禁。
+- `ata gate <policy.json> <audit.json>` 是显式 opt-in、仅 FAKE 的静态门禁。它只阻断 `FAKE`、不执行被审计源码，并以 `0`、`1`、`2` 表示通过、阻断或无效输入。
 - 支持 JS、TS、TSX 测试源码约定的 AST 提取。
 - 公开目录中的确定性规则。
 - 文本和 JSON 报告、FTR、透明的启发式分数。

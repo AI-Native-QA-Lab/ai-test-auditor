@@ -17,7 +17,7 @@ npm install
 2. 对每个新功能、缺陷修复、重构或行为变更，先写一个聚焦测试，并运行确认预期 RED 失败。
 3. 实现最小改动，重新运行聚焦测试直至 GREEN；只允许在测试保持绿色时重构。
 4. 公共行为变化时同步英文、中文文档和 Skill 参考资料；双语公开标记 guard 会对比共享 rule ID/分类、退出码行和关键公开选项。
-5. 将关键决定、范围、验证记录在 `docs/process/implementation-record_zh.md`，并与英文过程记录同步。
+5. 将关键决定、范围、验证记录在中文[实施经验](../history/implementation-notes.md)。
 
 ## 命令
 

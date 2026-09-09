@@ -16,6 +16,7 @@ Review supplied test source for evidence-bounded test-quality risks. The central
 - Treat `ata decision` output as a versioned advisory summary only: it is not a CI gate, pass/fail result, waiver, or release decision.
 - Treat a GitHub Actions reference workflow as source-only advisory presentation: its required manual `base-ref` or PR base SHA selects changed tests, and it must not create PR comments or execution evidence.
 - An unflagged test is `UNASSESSED`, not `STRONG`.
+- Treat `ata gate` as an explicit FAKE-only gate: only `blockOn: ["FAKE"]` is valid; WEAK never blocks, and the gate never executes source.
 - For Chinese output, read [SKILL_ZH.md](./SKILL_ZH.md) and `prompts/test-quality-audit-zh.md`.
 
 ## Workflow

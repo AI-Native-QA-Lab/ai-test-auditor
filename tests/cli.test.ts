@@ -46,6 +46,78 @@ async function invoke(args: string[]): Promise<{
 }
 
 describe('ata review', () => {
+  it('applies an explicit FAKE-only policy gate with 0, 1, and 2 exits', async () => {
+    const root = await fixture('');
+    const policyPath = join(root, 'gate-policy.json');
+    const fakePath = join(root, 'fake-envelope.json');
+    const weakPath = join(root, 'weak-envelope.json');
+    const invalidPath = join(root, 'invalid-envelope.json');
+    await writeFile(
+      policyPath,
+      JSON.stringify({
+        version: '1',
+        id: 'repository-static-fake-gate',
+        mode: 'gate',
+        blockOn: ['FAKE'],
+      }),
+    );
+    const testCase = {
+      filePath: 'example.test.ts',
+      name: 'example',
+      framework: 'vitest',
+      type: 'unit',
+      line: 1,
+      source: '() => { expect(true).toBe(true); }',
+      body: '{ expect(true).toBe(true); }',
+    };
+    const base = (classification: 'FAKE' | 'WEAK' | 'INVALID') => ({
+      version: '1',
+      audit: {
+        tests: classification === 'INVALID' ? [] : [testCase],
+        findings: [
+          {
+            ruleId: classification === 'INVALID' ? 'PARSER001' : 'UT002',
+            severity: classification === 'FAKE' ? 'CRITICAL' : 'WARNING',
+            classification,
+            confidence: classification === 'WEAK' ? 'MEDIUM' : 'HIGH',
+            filePath: testCase.filePath,
+            line: 1,
+            message: 'Finding.',
+            remediation: 'Fix it.',
+          },
+        ],
+        summary: {
+          total: 1,
+          assessed: 1,
+          fake: classification === 'FAKE' ? 1 : 0,
+          weak: classification === 'WEAK' ? 1 : 0,
+          invalid: classification === 'INVALID' ? 1 : 0,
+          unassessed: 0,
+          fakeTestRatio: classification === 'FAKE' ? 100 : 0,
+          trustScore: classification === 'FAKE' ? 75 : 90,
+        },
+      },
+    });
+    await writeFile(fakePath, JSON.stringify(base('FAKE')));
+    await writeFile(weakPath, JSON.stringify(base('WEAK')));
+    await writeFile(invalidPath, JSON.stringify(base('INVALID')));
+
+    const blocked = await invoke(['gate', policyPath, fakePath]);
+    const passed = await invoke(['gate', policyPath, weakPath]);
+    const invalid = await invoke(['gate', policyPath, invalidPath]);
+
+    expect(blocked.code).toBe(1);
+    expect(JSON.parse(blocked.stdout)).toMatchObject({
+      mode: 'gate',
+      status: 'blocked',
+      reasonCodes: ['STATIC_FAKE_FINDINGS'],
+    });
+    expect(passed.code).toBe(0);
+    expect(JSON.parse(passed.stdout)).toMatchObject({ status: 'passed' });
+    expect(invalid).toMatchObject({ code: 2, stdout: '' });
+    expect(invalid.stderr).toMatch(/^Error:/);
+  });
+
   it('emits an advisory decision with exit code 0 for a valid static snapshot', async () => {
     const root = await fixture(
       "import { expect, test } from 'vitest'; test('fake', () => { expect(true).toBe(true); });",
@@ -121,7 +193,7 @@ describe('ata review', () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.9.0');
+    expect(invocation.stdout).toContain('1.0.0');
   });
 
   it('keeps a matching baseline FAKE exit code and returns baseline JSON', async () => {

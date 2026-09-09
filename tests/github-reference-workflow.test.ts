@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseDecisionEnvelope } from '../src/core/decision';
+import { parseGatePolicy } from '../src/core/gate-policy';
 
 const run = promisify(execFile);
 const temporaryRoots: string[] = [];
@@ -17,6 +18,11 @@ const referenceWorkflow = join(
   projectRoot,
   '.github/workflows/audit-reference.yml',
 );
+const gateWorkflow = join(
+  projectRoot,
+  '.github/workflows/audit-gate-reference.yml',
+);
+const gatePolicy = join(projectRoot, '.github/ata-gate-policy.json');
 
 afterEach(async () => {
   await Promise.all(
@@ -170,5 +176,56 @@ describe('GitHub reference workflow', () => {
     expect(workflow).not.toContain('actions/github-script');
     expect(workflow).not.toContain('checks: write');
     expect(workflow).not.toContain('pull-requests: write');
+  });
+});
+
+describe('GitHub opt-in gate reference workflow', () => {
+  it('captures review status before forwarding the explicit gate status', async () => {
+    await expect(readFile(gatePolicy, 'utf8')).resolves.toContain('"FAKE"');
+    expect(
+      parseGatePolicy(JSON.parse(await readFile(gatePolicy, 'utf8'))),
+    ).toEqual({
+      version: '1',
+      id: 'repository-static-fake-gate',
+      mode: 'gate',
+      blockOn: ['FAKE'],
+    });
+
+    const workflow = await readFile(gateWorkflow, 'utf8');
+    expect(workflow).toContain('pull_request:');
+    expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).toMatch(/base-ref:[\s\S]*required: true/);
+    expect(workflow).toContain('permissions:\n  contents: read');
+    expect(workflow).toContain('fetch-depth: 0');
+    expect(workflow).toContain('node-version: 20');
+    expect(workflow).toContain('npm ci');
+    expect(workflow).toContain('npm run build');
+    expect(workflow).toContain(
+      'node dist/cli.js review . --changed-since "$BASE_REF" --format json',
+    );
+    expect(workflow).toContain('set +e');
+    expect(workflow).toContain('audit_exit=$?');
+    expect(workflow).toContain('"$audit_exit" -ne 0');
+    expect(workflow).toContain('"$audit_exit" -ne 1');
+    expect(workflow).toContain('exit 2');
+    expect(workflow).toContain(
+      'node .github/scripts/create-decision-envelope.mjs',
+    );
+    expect(workflow).toContain('projection_exit=$?');
+    expect(workflow).toContain('Unexpected audit projection exit code');
+    expect(workflow).toContain(
+      'node dist/cli.js gate .github/ata-gate-policy.json',
+    );
+    expect(workflow).toContain('gate_exit=$?');
+    expect(workflow).toContain('exit "$gate_exit"');
+    expect(workflow).not.toContain('pull_request_target');
+    expect(workflow).not.toContain('GITHUB_TOKEN');
+    expect(workflow).not.toContain('github-token');
+    expect(workflow).not.toContain('actions/github-script');
+    expect(workflow).not.toContain('gh ');
+    expect(workflow).not.toContain('curl');
+    expect(workflow).not.toContain('checks: write');
+    expect(workflow).not.toContain('pull-requests: write');
+    expect(workflow).not.toContain('ata decision');
   });
 });

@@ -2,156 +2,89 @@
 
 # AI Test Auditor
 
-## 许可证
+[![CI](https://github.com/naodeng/ai-test-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/naodeng/ai-test-auditor/actions/workflows/ci.yml)
 
-本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)。商业用途不属于该许可证
-允许的用途；使用、复制或分发前请阅读[官方完整条款](https://polyformproject.org/licenses/noncommercial/1.0.0)。
+> 不要信任 AI 生成的测试。验证它们的静态证据。
 
-> 不要信任 AI 生成的测试。验证它们。
+AI Test Auditor 是本地优先、纯源码审计的 JavaScript 与 TypeScript 测试工具。它读取测试源码，不 import 或执行源码。
 
-**AI Test Auditor** 是一个本地优先的 CLI，用于发现 JavaScript / TypeScript 测试中可由静态规则确定识别的无效测试信号。它审计测试**源码**，不会运行被审计的测试。
+## 为什么使用 AI Test Auditor？
 
-核心问题是：**如果生产行为出错，这条测试真的会失败吗？**
+测试可能看起来完整，却没有验证可观察的行为。该工具以范围有限、可追溯的源码证据暴露虚假信心信号，帮助团队在依赖测试前审查证据。
 
-## 能做什么
+## 核心能力与明确限制
 
-- 扫描 `.test.ts`、`.spec.ts`、`.test.tsx`、`.spec.tsx`、`.test.js`、`.spec.js` 和 `.e2e.ts`。
-- 用 TypeScript AST 提取直接定义的 Jest、Vitest、Playwright `test` / `it` 回调。
-- 输出带源码位置和修复建议的高置信度、确定性 `FAKE` 与 `WEAK` 发现项。
-- 通过 `ata review` 提供文本或 JSON 输出。
-- 内置独立的中英文 `test-quality-audit` Skill 与有证据边界的 Prompt。
-- 通过 `--mutation-report` 读取可选、版本化的变异证据，但不运行 mutation 工具。
-- 通过 `--changed-since <ref>` 选择相对于本地提交发生变更的当前支持测试文件。
-- 通过可选的版本化 `--policy <path>` 文件提供建议性的展示与选择计数。
+它提取直接定义的 Jest、Vitest、Playwright 回调，并输出带位置与修复建议的 `FAKE` 或 `WEAK` 发现项。它支持变更文件选择、可选 mutation 证据、建议性策略、基线比较、建议性决策投影和显式 opt-in 策略门禁。
 
-## 工具不做什么
-
-它**不会**执行测试、检查运行时行为、调用 LLM、运行 Mutation Testing、计算覆盖率、校验 import / fixture，也不会将未命中的测试标为 `STRONG`。未命中的测试统一是 `UNASSESSED`。
-
-## v0.4 变异证据
-
-传入由你自己的 mutation 工作流产出的报告：
-
-```bash
-node dist/cli.js review ./tests --mutation-report ./mutation-report.json --format json
-```
-
-```json
-{
-  "version": "1",
-  "engine": "stryker",
-  "command": "npx stryker run",
-  "threshold": {
-    "minimumScore": 80,
-    "source": "stryker.conf.json: thresholds.high"
-  },
-  "result": {
-    "totalMutants": 10,
-    "killed": 8,
-    "survived": 2,
-    "score": 80
-  }
-}
-```
-
-记录的命令与阈值来源是必需的溯源信息，不是待执行的指令：AI Test Auditor 绝不会执行该命令。低于 `minimumScore` 的结果仍是有效的建议性证据；它绝不改变静态分类、FTR、Trust Score 或进程退出码。
+它不运行测试、不检查运行时行为、不调用 LLM、不计算覆盖率，也不推断生产代码与测试关系。未命中规则的测试是 `UNASSESSED`，不是 `STRONG`。FTR 和 Trust Score 只是排序辅助，不是发布结论。
 
 ## 快速开始
 
-需要 Node.js 20 或更高版本。
+需要 Node.js 20+。
 
 ```bash
 npm install
 npm run build
-node dist/cli.js review ./tests
+node dist/cli.js review ./tests --format json
 ```
+
+安装包使用 `ata review [path]`；源码 checkout 使用 `node dist/cli.js review [path]`。
+
+预期结果：JSON 会列出提取的测试和确定性发现项；退出 `1` 表示至少存在一个 `FAKE`，而 `0` 不证明测试很强。
+
+## 常用工作流
 
 ```bash
-node dist/cli.js review tests/checkout.e2e.ts --type e2e
-node dist/cli.js review benchmarks --format json
-node dist/cli.js review . --changed-since HEAD~1
+# 选择相对本地 ref 变化的受支持测试文件。
+node dist/cli.js review . --changed-since HEAD~1 --format json
+
+# 增加版本化证据或建议性上下文，不改变静态语义。
+node dist/cli.js review ./tests --mutation-report ./mutation-report.json
+node dist/cli.js review ./tests --policy ./audit-policy.json
+node dist/cli.js review ./tests --baseline ./finding-baseline.json
+
+# 投影严格的建议性决策或评估显式门禁。
+node dist/cli.js decision ./decision-envelope.json
+node dist/cli.js gate ./gate-policy.json ./audit-envelope.json
 ```
 
-## v0.6.0 建议性策略
+`--policy` 只是 advisory：它只报告禁用/活跃选择计数，不改变发现项、分类、汇总、FTR、Trust Score 或退出语义。无效策略输入返回 `2`；它不是默认 CI 门禁，也不作发布决定。`ata decision` 同样只是建议性：有效决策返回 `0`，无效输入返回 `2`。
 
-传入显式的本地 JSON 策略，为不变的纯源码审计附加建议性说明：
+显式 opt-in 策略门禁只接受 `mode: "gate"` 和 `blockOn: ["FAKE"]`：使用 `ata gate` 运行。`WEAK 不阻断`；通过不证明测试很强。GitHub Actions 参考工作流使用 `base-ref`、`--changed-since` 和 `contents: read`，不创建 PR 评论。
 
-```bash
-node dist/cli.js review ./tests --policy ./audit-policy.json --format json
-```
+## 输出与退出码
 
-```json
-{
-  "version": "1",
-  "id": "local-review-policy",
-  "mode": "advisory",
-  "disabledRuleIds": ["UT002"]
-}
-```
-
-`disabledRuleIds` 可省略，且只能包含唯一的非空规则 ID。策略仅为 advisory：它报告禁用和活跃发现项计数，但不移除发现项，也不改变静态分类、汇总、FTR、Trust Score 或退出码。无效策略输入返回退出码 `2`。它不是默认 CI 门禁，也不作发布决定。
-
-安装后的包可通过 `ata review [path]` 运行；源码 checkout 使用 `node dist/cli.js review [path]`。两者默认审计当前目录，且绝不会 import 或执行目标源码。`--changed-since` 的 ref 是本地提交；它只选择当前支持的测试文件，不会推断生产代码与测试之间的关联。
-
-## v0.7.0 基线对比
-
-传入本地 version `1` 基线，按稳定身份标记本次发现项：
-
-```bash
-node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
-```
-
-```json
-{
-  "version": "1",
-  "id": "main",
-  "findings": [
-    {
-      "ruleId": "UT002",
-      "filePath": "tests/example.test.ts",
-      "line": 12,
-      "classification": "FAKE",
-      "severity": "CRITICAL"
-    }
-  ]
-}
-```
-
-身份由规则 ID、相对输入根目录的 POSIX 路径、行号、分类和严重性组成。基线只报告历史和新增发现项计数。历史项不代表已接受、安全、豁免或已解决；它不改变静态分类、发现项、FTR、Trust Score、策略计数或退出语义。无效基线输入返回退出码 `2`。
-
-## v0.8.0 CI 无关的建议性决策
-
-`ata decision ./decision-envelope.json` 将严格的本地 version `1` 静态审计信封转换为简洁的 JSON 建议性决策。有效决策返回 `0`；无效或不支持的信封返回 `2`。它拒绝未知字段和 `semantic`/`mutation` 附件。策略和基线 ID 仅作上下文；该决策不是 CI 门禁、通过/失败结果、豁免或发布决定。
-
-## v0.9.0 GitHub Actions 参考工作流
-
-`.github/workflows/audit-reference.yml` 是显式 opt-in 的 GitHub Actions 参考工作流。`pull_request` 使用 PR base SHA；手动 `workflow_dispatch` 必须提供 `base-ref`。它运行 `--changed-since`，将静态审计与建议性决策写入 Job Summary，并保留审计退出码。它仅使用 `contents: read`，不创建 PR 评论、不使用凭据，也不执行被审计源码。
-
-### 退出码
+`FAKE` 是确定性语法证据，`WEAK` 是不阻断的上下文提示，`UNASSESSED` 表示静态分析未给出结论。FTR 和 Trust Score 用于安排审查优先级，不度量运行时质量。
 
 | 代码 | 含义                                                               |
 | ---- | ------------------------------------------------------------------ |
-| `0`  | 未输出确定性的 `FAKE` 发现项；这不表示测试已经很强。               |
-| `1`  | 至少输出一条确定性的 `FAKE` 发现项。                               |
-| `2`  | 命令、无效策略输入、输入路径或选中的源码无效（包括 `PARSER001`）。 |
+| `0`  | 未输出确定性的 `FAKE`；不证明测试很强。                            |
+| `1`  | 至少输出一个确定性的 `FAKE`。                                      |
+| `2`  | 命令、路径、无效策略输入、输入或选中的源码无效，包括 `PARSER001`。 |
 
-## 规则与边界
+## 项目边界
 
-v0.5 包含 UT001、UT002、UT003、UT004、UT008、UT011、API001、API002、E2E001、E2E002、E2E003、E2E004。规则优先保证可解释、可追溯的源码证据，而非追求规则数量。完整说明见[规则目录](./docs/zh/rules.md)。
+审计器绝不 import、执行或评估被审计源码；它不证明测试强度、运行时质量、覆盖率、变异得分或发布就绪性。
 
-FTR 和 Trust Score 只是透明的排序启发式指标，不是运行时质量、变异分数或发布结论。
+## 文档导航
 
-## 文档
+将输出作为发布决定前，请先阅读[规则目录](./docs/zh/rules.md)。
 
 - [需求文档](./docs/zh/requirements.md)
 - [架构设计](./docs/zh/architecture.md)
-- [规则目录](./docs/zh/rules.md)
 - [迭代计划](./docs/zh/roadmap.md)
+- [项目上下文](./docs/zh/context.md)
 - [开发指南](./docs/zh/development.md)
-- [实施过程记录](./docs/process/implementation-record_zh.md)
+- [中文实施经验](./docs/history/implementation-notes.md)
 - [贡献指南](./CONTRIBUTING_ZH.md)
 
-## 开发验证
+## 下一步
+
+v1.0 是当前稳定基线。v2.0 尚未交付；运行时、mutation 与 AI/LLM 的可选方向仅在[迭代计划](./docs/zh/roadmap.md)中说明。
+
+## 参与贡献
+
+请阅读[贡献指南](./CONTRIBUTING_ZH.md)。提交变更前运行：
 
 ```bash
 npm test
@@ -161,4 +94,8 @@ npm run format:check
 npm run build
 ```
 
-项目约定见 [AGENTS.md](./AGENTS.md)。
+项目规则见 [AGENTS.md](./AGENTS.md)，完整流程见[开发指南](./docs/zh/development.md)。
+
+## 许可证
+
+本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)。商业用途不被允许；请阅读[官方条款](https://polyformproject.org/licenses/noncommercial/1.0.0)。

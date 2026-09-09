@@ -2,7 +2,7 @@
 
 ## Project purpose
 
-`ai-test-auditor` is a deterministic static analyzer for test source. v0.1 identifies narrow, source-backed signs of ineffective JavaScript and TypeScript tests. Do not describe it as a test runner, an LLM reviewer, a mutation-testing tool, or evidence that an unflagged test is strong.
+`ai-test-auditor` is a deterministic static analyzer for test source. v1.0 is the current stable baseline for source-backed signs of ineffective JavaScript and TypeScript tests. Do not describe it as a test runner, an LLM reviewer, a mutation-testing tool, or evidence that an unflagged test is strong.
 
 ## Scope and boundaries
 
@@ -18,7 +18,7 @@
 1. Read the related rule, its test, and [docs/rules.md](./docs/rules.md) before changing analysis behavior.
 2. Apply TDD to every feature, bug fix, refactor, and behavior change: add a focused failing test, confirm the expected RED failure, implement the smallest change, confirm GREEN, then refactor only while green. Production code without an observed failing test is not acceptable.
 3. Preserve unrelated working-tree changes. Do not reset, clean, or overwrite them.
-4. Add process evidence to `docs/process/implementation-record.md` and its Chinese counterpart `docs/process/implementation-record_zh.md` for material decisions, validation commands, scope changes, and known limits.
+4. Add Chinese process evidence to `docs/history/implementation-notes.md` for material decisions, validation commands, scope changes, and known limits.
 5. Keep `test-quality-audit/` bilingual: English `SKILL.md`, Chinese `SKILL_ZH.md`, matching prompts, and maintained examples/evals.
 
 ## Commands
@@ -41,6 +41,12 @@ Run the relevant tests after every code change and the full command set before r
 - Do not invent quality percentages, execution results, coverage, mutation scores, integrations, or compatibility guarantees.
 - Link only to paths that exist in this repository.
 - Mermaid is preferred for editable architecture diagrams.
+
+## Future iteration rules
+
+Before v2.0+ work, read [docs/roadmap.md](./docs/roadmap.md), [docs/context.md](./docs/context.md), the affected rule, and its test. Roadmap is the only detailed future plan; README and Context may only summarize or link it. Obtain approval for an independent design before implementing any future adapter.
+
+Future runtime, mutation, or model adapters must be explicit and verifiable. They must not silently execute reviewed source, read credentials, or call networks, and must not alter static findings/classifications, `FAKE`/`WEAK`/`UNASSESSED`, FTR, Trust Score, existing exit semantics, or FAKE-only opt-in gate inputs. Keep public project documents and Skill assets bilingual; maintain process/history material in Chinese.
 
 ## Delivery
 

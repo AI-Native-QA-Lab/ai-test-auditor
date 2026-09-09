@@ -69,6 +69,13 @@ export interface AuditPolicy {
   readonly disabledRuleIds: readonly string[];
 }
 
+export interface GatePolicy {
+  readonly version: '1';
+  readonly id: string;
+  readonly mode: 'gate';
+  readonly blockOn: readonly ['FAKE'];
+}
+
 export interface PolicyEvaluation {
   readonly id: string;
   readonly version: '1';
@@ -132,6 +139,19 @@ export interface AdvisoryDecision {
   readonly reasonCodes: readonly DecisionReasonCode[];
   readonly staticSummary: Pick<AuditSummary, 'fake' | 'weak' | 'invalid'>;
   readonly context: DecisionAuditContext;
+}
+
+export type GateStatus = 'passed' | 'blocked';
+
+export type GateReasonCode = 'STATIC_FAKE_FINDINGS' | 'NO_STATIC_FAKE_FINDINGS';
+
+export interface GateResult {
+  readonly version: '1';
+  readonly mode: 'gate';
+  readonly status: GateStatus;
+  readonly reasonCodes: readonly GateReasonCode[];
+  readonly staticSummary: Pick<AuditSummary, 'fake' | 'weak' | 'invalid'>;
+  readonly policyId: string;
 }
 
 export interface AuditResult {
