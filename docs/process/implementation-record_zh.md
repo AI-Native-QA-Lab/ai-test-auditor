@@ -4,11 +4,11 @@
 
 ## 2026-09-09 — v1.0.0 显式 opt-in 仅 FAKE 策略门禁
 
-新增 `ata gate <policy.json> <audit.json>` 与严格 version `1` 门禁策略（`mode: "gate"`、`blockOn: ["FAKE"]`）。包含 `FAKE` 的已校验静态快照输出紧凑的 `blocked` 结果并返回 `1`；仅 WEAK 或无发现项返回 `passed` 和 `0`；无效策略、格式错误信封或包含 `INVALID` 的快照不输出部分 JSON 并返回 `2`。门禁不执行被审计源码，也不消费 advisory、semantic 或 mutation 结论。新增独立、最小权限的 `audit-gate-reference.yml`，捕获 review 的 `0`/`1`，对 `2` 停止，并转发门禁退出码。
+新增 `ata gate <policy.json> <audit.json>` 与严格 version `1` 门禁策略（`mode: "gate"`、`blockOn: ["FAKE"]`）。包含 `FAKE` 的已校验静态快照输出紧凑的 `blocked` 结果并返回 `1`；仅 WEAK 或无发现项返回 `passed` 和 `0`；无效策略、格式错误信封或包含 `INVALID` 的快照不输出部分 JSON 并返回 `2`。门禁不执行被审计源码，也不消费 advisory、semantic 或 mutation 结论。新增独立、最小权限的 `audit-gate-reference.yml`，捕获 review 的 `0`/`1`，对 `2` 停止，将严格审计投影失败转换为 `2`，否则转发门禁退出码。
 
 已观察 RED/GREEN：`npx vitest run tests/core/gate-policy.test.ts` 因模块不存在失败，随后通过 12 项；`npx vitest run tests/core/gate.test.ts` 因模块不存在失败，随后连同 decision 回归通过；`npx vitest run tests/cli.test.ts` 因未知命令失败，随后通过；`npx vitest run tests/github-reference-workflow.test.ts` 因策略/工作流缺失失败，随后通过 5 项；`npx vitest run tests/docs-contract.test.ts` 因缺少 v1.0 标记失败，随后通过；版本断言从 `0.9.0` 失败后改为 `1.0.0` 通过。
 
-首轮完整验证：`npm test` 通过 18 个文件 / 175 项测试；`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run format:check` 通过；`node dist/cli.js review benchmarks --format json` 以预期退出码 `1` 返回 6 个 FAKE 和 1 个 WEAK；`git diff --check` 通过。路线图与本记录更新后会重新执行最终工作树验证。未执行托管 CI、commit、push、tag 或 release。
+审查后，聚焦工作流回归先因缺少投影退出码处理而失败；工作流捕获该状态并映射为 `2` 后通过。完整验证随后通过：`npm test` 通过 18 个文件 / 175 项测试；`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run format:check` 通过；`node dist/cli.js review benchmarks --format json` 以预期退出码 `1` 返回 6 个 FAKE 和 1 个 WEAK；`git diff --check` 通过。未执行托管 CI、push、tag 或 release。
 
 ## 2026-09-09 — v0.9.0 GitHub Actions 建议性参考工作流
 

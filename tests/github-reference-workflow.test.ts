@@ -211,6 +211,8 @@ describe('GitHub opt-in gate reference workflow', () => {
     expect(workflow).toContain(
       'node .github/scripts/create-decision-envelope.mjs',
     );
+    expect(workflow).toContain('projection_exit=$?');
+    expect(workflow).toContain('Unexpected audit projection exit code');
     expect(workflow).toContain(
       'node dist/cli.js gate .github/ata-gate-policy.json',
     );

@@ -42,7 +42,14 @@ jobs:
             exit 2
           fi
 
+          set +e
           node .github/scripts/create-decision-envelope.mjs audit.json > gate-envelope.json
+          projection_exit=$?
+          set -e
+          if [ "$projection_exit" -ne 0 ]; then
+            echo "Unexpected audit projection exit code: $projection_exit." >&2
+            exit 2
+          fi
 
           set +e
           node dist/cli.js gate .github/ata-gate-policy.json gate-envelope.json > gate.json

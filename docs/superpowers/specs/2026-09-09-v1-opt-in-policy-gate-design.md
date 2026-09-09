@@ -57,11 +57,11 @@ v1.0 新增独立命令 `ata gate <policy.json> <audit.json>`。它将维护者�
 }
 ```
 
-| 已验证快照状态 | `status` | reason code | CLI 退出码 |
-| --- | --- | --- | --- |
-| `invalid > 0` | 无结果 | `STATIC_INVALID_INPUT` 仅用于诊断文本 | `2` |
-| `fake > 0` | `blocked` | `STATIC_FAKE_FINDINGS` | `1` |
-| `fake = 0`，任意 `weak` | `passed` | `NO_STATIC_FAKE_FINDINGS`，并保留 weak 计数 | `0` |
+| 已验证快照状态          | `status`  | reason code                                 | CLI 退出码 |
+| ----------------------- | --------- | ------------------------------------------- | ---------- |
+| `invalid > 0`           | 无结果    | `STATIC_INVALID_INPUT` 仅用于诊断文本       | `2`        |
+| `fake > 0`              | `blocked` | `STATIC_FAKE_FINDINGS`                      | `1`        |
+| `fake = 0`，任意 `weak` | `passed`  | `NO_STATIC_FAKE_FINDINGS`，并保留 weak 计数 | `0`        |
 
 `reasonCodes` 对 `blocked` 仅为 `STATIC_FAKE_FINDINGS`；对 `passed` 仅为 `NO_STATIC_FAKE_FINDINGS`。这避免把 `WEAK` 表述为阻断原因。无静态 `FAKE` 仅表示该快照未发现可阻断的确定性模式，绝不表示测试 `STRONG`、发布获批或质量保证。
 
@@ -77,13 +77,13 @@ flowchart LR
   G -->|无效策略或快照，或 INVALID| ERR[error / exit 2]
 ```
 
-| 组件 | 职责 | 不可做的事 |
-| --- | --- | --- |
-| `src/core/gate-policy.ts` | 解析并加载严格的门禁策略，抛出 `GatePolicyError`。 | 不修改 advisory policy，不读取环境变量。 |
-| `src/core/gate.ts` | 加载既有严格快照、根据 `FAKE` 生成 `GateResult`，处理 `INVALID`。 | 不重新审计、不执行源码、不消费 semantic/mutation。 |
-| `src/core/types.ts` | 定义 `GatePolicy`、`GateResult`、稳定状态和原因码类型。 | 不变更 `AuditResult` 或 advisory decision 合约。 |
-| `src/cli.ts` | 注册 `ata gate <policy> <audit>`，写 JSON，映射 `0`/`1`/`2`。 | 不改动 `review` 和 `decision`。 |
-| `.github/` 示例 | 增加显式 opt-in gate 工作流或步骤，保留 v0.9 建议性示例。 | 不加 API、token、注释、注解或默认门禁。 |
+| 组件                      | 职责                                                              | 不可做的事                                         |
+| ------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `src/core/gate-policy.ts` | 解析并加载严格的门禁策略，抛出 `GatePolicyError`。                | 不修改 advisory policy，不读取环境变量。           |
+| `src/core/gate.ts`        | 加载既有严格快照、根据 `FAKE` 生成 `GateResult`，处理 `INVALID`。 | 不重新审计、不执行源码、不消费 semantic/mutation。 |
+| `src/core/types.ts`       | 定义 `GatePolicy`、`GateResult`、稳定状态和原因码类型。           | 不变更 `AuditResult` 或 advisory decision 合约。   |
+| `src/cli.ts`              | 注册 `ata gate <policy> <audit>`，写 JSON，映射 `0`/`1`/`2`。     | 不改动 `review` 和 `decision`。                    |
+| `.github/` 示例           | 增加显式 opt-in gate 工作流或步骤，保留 v0.9 建议性示例。         | 不加 API、token、注释、注解或默认门禁。            |
 
 ## CI 集成
 

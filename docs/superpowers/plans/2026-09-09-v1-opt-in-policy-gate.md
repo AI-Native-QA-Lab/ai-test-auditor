@@ -86,14 +86,16 @@
   Create `tests/core/gate.test.ts` using a strict decision envelope fixture with one `UT002` `FAKE` finding and a matching summary. Assert:
 
   ```ts
-  expect(createGateResult(policy, parseDecisionEnvelope(fakeEnvelope))).toEqual({
-    version: '1',
-    mode: 'gate',
-    status: 'blocked',
-    reasonCodes: ['STATIC_FAKE_FINDINGS'],
-    staticSummary: { fake: 1, weak: 0, invalid: 0 },
-    policyId: 'repository-static-fake-gate',
-  });
+  expect(createGateResult(policy, parseDecisionEnvelope(fakeEnvelope))).toEqual(
+    {
+      version: '1',
+      mode: 'gate',
+      status: 'blocked',
+      reasonCodes: ['STATIC_FAKE_FINDINGS'],
+      staticSummary: { fake: 1, weak: 0, invalid: 0 },
+      policyId: 'repository-static-fake-gate',
+    },
+  );
   ```
 
   Add a valid `WEAK`-only snapshot and an unflagged snapshot; both must return `passed` with `NO_STATIC_FAKE_FINDINGS`, retaining their actual `weak` count. Add a parser-diagnostic (`PARSER001`/`INVALID`) snapshot and assert `GateError`. Serialize each successful result and assert it contains none of `source`, `body`, `filePath`, `findings`, `fakeTestRatio`, or `trustScore`. Include an advisory policy/baseline context in a fixture and assert they do not appear in the gate result.
@@ -144,7 +146,9 @@
   ```ts
   program
     .command('gate')
-    .description('Apply an explicit FAKE-only policy gate to a static audit snapshot')
+    .description(
+      'Apply an explicit FAKE-only policy gate to a static audit snapshot',
+    )
     .argument('<policy>', 'versioned gate policy JSON')
     .argument('<audit>', 'versioned static-audit envelope JSON')
     .action(async (policyPath: string, auditPath: string) => {
