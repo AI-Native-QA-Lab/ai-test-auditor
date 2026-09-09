@@ -47,6 +47,8 @@ flowchart LR
 | `policy`        | 校验显式 opt-in 的建议性策略，并统计其禁用规则 ID 选择的发现项。     | 不移除发现项，不改变分类/汇总/退出码，不创建 CI 门禁或发布决定。               |
 | `baseline`      | 校验显式 opt-in 的版本化基线，并统计稳定身份属于历史项的本次发现项。 | 不接受、移除、改变或压制发现项、分数、策略计数或退出语义。                     |
 | `decision`      | 校验版本化静态快照并投影建议性决策。                                 | 不执行源码、不消费 semantic/mutation 证据、不创建 CI 门禁，也不改变 `review`。 |
+| `gate-policy`   | 校验显式 `mode: "gate"` 与 `blockOn: ["FAKE"]` 策略。                | 不改变 advisory 策略行为。                                                     |
+| `gate`          | 从已校验静态快照生成紧凑 `GateResult`。                              | 仅 FAKE 门禁；WEAK 永不阻断。                                                  |
 | `reporters`     | 将同一结果渲染为文本或 JSON。                                        | 不添加发现项。                                                                 |
 | `cli`           | 解析命令、校验输入、输出报告、选择退出码。                           | 除退出码语义外不设发布策略。                                                   |
 

@@ -126,6 +126,10 @@ The identity is rule ID, root-relative POSIX path, line, classification, and sev
 
 `.github/workflows/audit-reference.yml` is an opt-in GitHub Actions reference workflow. On `pull_request` it uses the PR base SHA; manual `workflow_dispatch` runs require a `base-ref`. It runs `--changed-since`, writes the static audit and advisory decision to the Job Summary, and preserves the audit exit code. It uses only `contents: read`, does not create PR comments, use credentials, or execute reviewed source.
 
+## v1.0.0 explicit opt-in policy gate
+
+`ata gate ./gate-policy.json ./audit-envelope.json` consumes a strict static snapshot and an explicit local policy. The only valid policy has `mode: "gate"` and `blockOn: ["FAKE"]`; `FAKE` blocks with exit `1`, while `WEAK does not block`. A passed gate returns `0`; invalid policy or snapshot input returns `2`. It never executes reviewed source, and a pass is not evidence that tests are `STRONG`.
+
 ### Exit codes
 
 | Code | Meaning                                                                                               |

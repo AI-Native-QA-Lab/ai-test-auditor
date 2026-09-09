@@ -47,6 +47,8 @@ flowchart LR
 | `policy` | Validates an opt-in advisory policy and counts findings selected by its disabled rule IDs. | Does not remove findings, change classifications/summary/exit semantics, create a CI gate, or make a release decision. |
 | `baseline` | Validates an opt-in versioned baseline and counts current findings whose stable identities are historical. | Does not accept, remove, change, or suppress findings, scores, policy counts, or exit semantics. |
 | `decision` | Validates a versioned static snapshot and projects an advisory decision. | Does not execute source, consume semantic/mutation evidence, create a CI gate, or alter `review`. |
+| `gate-policy` | Validates an explicit `mode: "gate"` and `blockOn: ["FAKE"]` policy. | Does not alter advisory policy behavior. |
+| `gate` | Produces a compact `GateResult` from a validated static snapshot. | FAKE-only gate; WEAK never blocks. |
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
 

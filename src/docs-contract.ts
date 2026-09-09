@@ -314,6 +314,69 @@ const githubReferenceDocuments: readonly PublicDocument[] = [
   },
 ];
 
+const gateBoundaryDocuments: readonly PublicDocument[] = [
+  {
+    path: 'README.md',
+    terms: [
+      'v1.0.0 explicit opt-in policy gate',
+      'ata gate',
+      'blockOn',
+      'WEAK does not block',
+    ],
+  },
+  {
+    path: 'README_ZH.md',
+    terms: [
+      'v1.0.0 显式 opt-in 策略门禁',
+      'ata gate',
+      'blockOn',
+      'WEAK 不阻断',
+    ],
+  },
+  {
+    path: 'docs/requirements.md',
+    terms: ['ata gate', 'FAKE-only', 'explicit opt-in'],
+  },
+  {
+    path: 'docs/zh/requirements.md',
+    terms: ['ata gate', '仅 FAKE', '显式 opt-in'],
+  },
+  {
+    path: 'docs/architecture.md',
+    terms: ['gate-policy', 'GateResult', 'FAKE-only gate'],
+  },
+  {
+    path: 'docs/zh/architecture.md',
+    terms: ['gate-policy', 'GateResult', '仅 FAKE 门禁'],
+  },
+  { path: 'docs/rules.md', terms: ['FAKE-only gate', 'WEAK never blocks'] },
+  { path: 'docs/zh/rules.md', terms: ['仅 FAKE 门禁', 'WEAK 永不阻断'] },
+  {
+    path: 'test-quality-audit/SKILL.md',
+    terms: ['ata gate', 'FAKE-only', 'WEAK never blocks'],
+  },
+  {
+    path: 'test-quality-audit/SKILL_ZH.md',
+    terms: ['ata gate', '仅 FAKE', 'WEAK 永不阻断'],
+  },
+  {
+    path: 'test-quality-audit/prompts/test-quality-audit.md',
+    terms: ['ata gate', 'FAKE-only gate'],
+  },
+  {
+    path: 'test-quality-audit/prompts/test-quality-audit-zh.md',
+    terms: ['ata gate', '仅 FAKE 门禁'],
+  },
+  {
+    path: 'test-quality-audit/references/rule-boundary.md',
+    terms: ['mode: "gate"', 'blockOn', 'FAKE-only gate'],
+  },
+  {
+    path: 'test-quality-audit/evals/cases.md',
+    terms: ['`fake-only-gate`', 'WEAK does not block'],
+  },
+];
+
 export async function validateBilingualPublicMarkers(): Promise<string[]> {
   const violations: string[] = [];
   const contents = new Map<string, string>();
@@ -336,6 +399,10 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
     addMissingTerms(violations, document.path, content, document.terms);
   }
   for (const document of githubReferenceDocuments) {
+    const content = await readDocument(document.path, contents);
+    addMissingTerms(violations, document.path, content, document.terms);
+  }
+  for (const document of gateBoundaryDocuments) {
     const content = await readDocument(document.path, contents);
     addMissingTerms(violations, document.path, content, document.terms);
   }

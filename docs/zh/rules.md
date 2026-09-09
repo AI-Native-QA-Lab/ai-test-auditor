@@ -35,6 +35,10 @@
 
 ## CI 无关决策边界
 
+## 仅 FAKE 门禁边界
+
+显式 `ata gate` 是仅 FAKE 门禁：它要求 `mode: "gate"` 与 `blockOn: ["FAKE"]`。WEAK 永不阻断，通过门禁也不证明测试是 STRONG。
+
 `ata decision` 仅将已校验的静态汇总事实投影为 version `1` 建议性决策。它拒绝 semantic/mutation 附件和未知字段；策略/基线 ID 仅为上下文。有效决策返回 `0`，但它不是 CI 门禁、豁免、发布决定，也不能证明未标记测试是 `STRONG`。
 
 v0.9 的 GitHub Actions 参考工作流从 PR base SHA 或手动 `base-ref` 选择变更的受支持测试文件，仅将允许字段投影到 `ata decision`，并保留静态审计退出码。其 Job Summary 仅为建议性输出，不创建 PR 评论。

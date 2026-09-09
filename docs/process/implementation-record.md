@@ -1,5 +1,13 @@
 # Implementation Record
 
+## 2026-09-09 — v1.0.0 explicit opt-in FAKE-only policy gate
+
+Added `ata gate <policy.json> <audit.json>` with a strict version `1` gate policy (`mode: "gate"`, `blockOn: ["FAKE"]`). Validated static snapshots containing `FAKE` return a compact `blocked` result and exit `1`; WEAK-only or unflagged snapshots return `passed` and exit `0`; invalid policy, malformed envelopes, or `INVALID` snapshots return `2` without partial JSON. The gate does not execute reviewed source or consume advisory, semantic, or mutation conclusions. Added a separate least-privilege `audit-gate-reference.yml` workflow that captures review exits `0`/`1`, stops on `2`, and forwards the gate exit.
+
+Observed RED/GREEN: `npx vitest run tests/core/gate-policy.test.ts` failed for the absent module, then passed 12 tests; `npx vitest run tests/core/gate.test.ts` failed for the absent module, then passed with decision regressions; `npx vitest run tests/cli.test.ts` failed for the unknown command, then passed; `npx vitest run tests/github-reference-workflow.test.ts` failed for absent policy/workflow, then passed 5 tests; `npx vitest run tests/docs-contract.test.ts` failed with missing v1.0 markers, then passed; the version assertion failed at `0.9.0`, then passed at `1.0.0`.
+
+First complete validation: `npm test` passed 18 files / 175 tests; `npm run lint`, `npm run typecheck`, `npm run build`, and `npm run format:check` passed; `node dist/cli.js review benchmarks --format json` returned expected exit `1` with 6 FAKE and 1 WEAK; `git diff --check` passed. Final worktree verification is rerun after this record and roadmap update. No hosted CI, commit, push, tag, or release was performed.
+
 ## 2026-09-09 — v0.9.0 GitHub Actions advisory reference workflow
 
 Added `.github/workflows/audit-reference.yml` as a separate opt-in reference, preserving `ci.yml`. PR runs select changed supported test files from the PR base SHA; manual runs require `base-ref`; the workflow uses `contents: read`, full local history, and no GitHub API, token, PR comment, or reviewed-source execution. It writes static audit JSON and a v1 projected advisory decision to Job Summary, then re-emits the static audit exit code. The workflow-local projection omits audit-only fields and maps policy/baseline IDs to the strict `DecisionEnvelope` context shape.

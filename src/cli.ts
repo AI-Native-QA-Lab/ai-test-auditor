@@ -14,6 +14,8 @@ import {
   DecisionError,
   loadDecisionEnvelope,
 } from './core/decision.js';
+import { GateError, createGateResult } from './core/gate.js';
+import { GatePolicyError, loadGatePolicy } from './core/gate-policy.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -124,6 +126,22 @@ export async function runCli(
       resultCode = 0;
     });
 
+  program
+    .command('gate')
+    .description(
+      'Apply an explicit FAKE-only policy gate to a static audit snapshot',
+    )
+    .argument('<policy>', 'versioned gate policy JSON')
+    .argument('<audit>', 'versioned static-audit envelope JSON')
+    .action(async (policyPath: string, auditPath: string) => {
+      const result = createGateResult(
+        await loadGatePolicy(policyPath),
+        await loadDecisionEnvelope(auditPath),
+      );
+      io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+      resultCode = result.status === 'blocked' ? 1 : 0;
+    });
+
   try {
     await program.parseAsync(['node', 'ata', ...args]);
     return resultCode;
@@ -159,6 +177,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof GatePolicyError || error instanceof GateError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -169,7 +191,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.9.0')
+    .version('1.0.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

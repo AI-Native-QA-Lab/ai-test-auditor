@@ -16,6 +16,7 @@ description: 当需要审查 JavaScript 或 TypeScript Unit、API、Playwright �
 - 将 `ata decision` 输出仅视为版本化建议性摘要：它不是 CI 门禁、通过/失败结果、豁免或发布决定。
 - 将 GitHub Actions 参考工作流仅视为纯源码建议性展示：其必填手动 `base-ref` 或 PR base SHA 选择变更测试，且不得创建 PR 评论或执行证据。
 - 未命中的测试为 `UNASSESSED`，不是 `STRONG`。
+- 将 `ata gate` 视为显式仅 FAKE 门禁：只有 `blockOn: ["FAKE"]` 有效；WEAK 永不阻断，且门禁不执行源码。
 - 英文输出读取 [SKILL.md](./SKILL.md) 与 `prompts/test-quality-audit.md`。
 
 ## 流程

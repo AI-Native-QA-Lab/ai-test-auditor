@@ -21,7 +21,7 @@
 | 0.7   | Delivered as v0.7.0: advisory baseline comparison.                                                   | Versioned identity artifact, deterministic counts, and full local validation.   |
 | 0.8   | Delivered as v0.8.0: CI-neutral advisory decision adapter.                                           | Strict v1 envelope, stable reason codes, and full local validation.             |
 | 0.9   | Delivered as v0.9.0: GitHub Actions advisory reference workflow.                                     | Changed-test selection, strict decision projection, and local validation.       |
-| 1.0   | Planned: opt-in policy-gate integration.                                                             | Opt-in configuration, CI samples, and documented failure semantics.             |
+| 1.0   | Delivered as v1.0.0: explicit opt-in FAKE-only policy gate.                                          | Strict gate policy, CLI/CI samples, and documented failure semantics.           |
 | 2.0   | Separately planned: runtime, mutation, and LLM adapters; optional static-first AI assist after v1.0. | Separate design, safety review, and implementation evidence; no delivery claim. |
 
 ## Sequencing principles

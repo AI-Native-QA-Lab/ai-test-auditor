@@ -2,6 +2,14 @@
 
 # 实施过程记录
 
+## 2026-09-09 — v1.0.0 显式 opt-in 仅 FAKE 策略门禁
+
+新增 `ata gate <policy.json> <audit.json>` 与严格 version `1` 门禁策略（`mode: "gate"`、`blockOn: ["FAKE"]`）。包含 `FAKE` 的已校验静态快照输出紧凑的 `blocked` 结果并返回 `1`；仅 WEAK 或无发现项返回 `passed` 和 `0`；无效策略、格式错误信封或包含 `INVALID` 的快照不输出部分 JSON 并返回 `2`。门禁不执行被审计源码，也不消费 advisory、semantic 或 mutation 结论。新增独立、最小权限的 `audit-gate-reference.yml`，捕获 review 的 `0`/`1`，对 `2` 停止，并转发门禁退出码。
+
+已观察 RED/GREEN：`npx vitest run tests/core/gate-policy.test.ts` 因模块不存在失败，随后通过 12 项；`npx vitest run tests/core/gate.test.ts` 因模块不存在失败，随后连同 decision 回归通过；`npx vitest run tests/cli.test.ts` 因未知命令失败，随后通过；`npx vitest run tests/github-reference-workflow.test.ts` 因策略/工作流缺失失败，随后通过 5 项；`npx vitest run tests/docs-contract.test.ts` 因缺少 v1.0 标记失败，随后通过；版本断言从 `0.9.0` 失败后改为 `1.0.0` 通过。
+
+首轮完整验证：`npm test` 通过 18 个文件 / 175 项测试；`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run format:check` 通过；`node dist/cli.js review benchmarks --format json` 以预期退出码 `1` 返回 6 个 FAKE 和 1 个 WEAK；`git diff --check` 通过。路线图与本记录更新后会重新执行最终工作树验证。未执行托管 CI、commit、push、tag 或 release。
+
 ## 2026-09-09 — v0.9.0 GitHub Actions 建议性参考工作流
 
 新增独立 opt-in 参考工作流 `.github/workflows/audit-reference.yml`，保留 `ci.yml` 不变。PR 运行从 PR base SHA 选择变更的受支持测试文件；手动运行必须提供 `base-ref`；工作流使用 `contents: read`、完整本地历史，不使用 GitHub API、token、PR 评论，也不执行被审计源码。它将静态审计 JSON 与 v1 投影后的建议性决策写入 Job Summary，随后返回静态审计原退出码。工作流本地投影会省略审计专用字段，并将策略/基线 ID 映射为严格 `DecisionEnvelope` 上下文形状。

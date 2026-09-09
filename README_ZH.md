@@ -127,6 +127,10 @@ node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
 
 `.github/workflows/audit-reference.yml` 是显式 opt-in 的 GitHub Actions 参考工作流。`pull_request` 使用 PR base SHA；手动 `workflow_dispatch` 必须提供 `base-ref`。它运行 `--changed-since`，将静态审计与建议性决策写入 Job Summary，并保留审计退出码。它仅使用 `contents: read`，不创建 PR 评论、不使用凭据，也不执行被审计源码。
 
+## v1.0.0 显式 opt-in 策略门禁
+
+`ata gate ./gate-policy.json ./audit-envelope.json` 使用严格静态快照与显式本地策略。唯一有效策略为 `mode: "gate"` 且 `blockOn: ["FAKE"]`；`FAKE` 以退出码 `1` 阻断，`WEAK 不阻断`。通过返回 `0`，无效策略或快照返回 `2`。它不执行被审计源码，通过也不证明测试是 `STRONG`。
+
 ### 退出码
 
 | 代码 | 含义                                                               |
