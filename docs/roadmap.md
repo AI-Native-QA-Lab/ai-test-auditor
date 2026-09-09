@@ -2,59 +2,34 @@
 
 # Roadmap
 
-## Delivered MVP foundation
+## Current baseline
 
-- Problem definition: ineffective / false-confidence tests.
-- Source-only AST pipeline, deterministic rules, CLI, JSON/text reporting, transparent score/FTR.
-- Jest/Vitest/Playwright direct callback support, benchmark fixtures, bilingual Skill, and CI foundation.
+v1.0 is the current stable baseline. It is a deterministic, source-only audit of JavaScript and TypeScript test source, with an explicit opt-in `FAKE`-only policy gate. A passing audit or gate is not proof that tests are strong.
 
-## Iteration plan
+## Delivered evolution
 
-| Phase | Outcome                                                                                              | Evidence required before claiming delivery                                      |
-| ----- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| 0.1   | Deterministic static-rule MVP.                                                                       | Rule-level positive/negative tests and CLI fixtures.                            |
-| 0.2   | More framework extraction and configuration, including explicit parser diagnostics.                  | Fixture corpus and compatibility matrix.                                        |
-| 0.3   | Optional semantic review interface.                                                                  | Versioned prompt/schema, disclosed model and evidence limits, evaluation set.   |
-| 0.4   | Delivered: offline mutation-evidence adapter.                                                        | Versioned schema, command/threshold provenance, parser and CLI contracts.       |
-| 0.5   | Delivered: Unit/API/E2E rule expansion and changed-file selection.                                   | Rule catalog, false-positive analysis, integration tests.                       |
-| 0.6.0 | Delivered: advisory source-only audit policy presentation and selection counts.                      | Public contracts and the full documented validation gate.                       |
-| 0.7   | Delivered as v0.7.0: advisory baseline comparison.                                                   | Versioned identity artifact, deterministic counts, and full local validation.   |
-| 0.8   | Delivered as v0.8.0: CI-neutral advisory decision adapter.                                           | Strict v1 envelope, stable reason codes, and full local validation.             |
-| 0.9   | Delivered as v0.9.0: GitHub Actions advisory reference workflow.                                     | Changed-test selection, strict decision projection, and local validation.       |
-| 1.0   | Delivered as v1.0.0: explicit opt-in FAKE-only policy gate.                                          | Strict gate policy, CLI/CI samples, and documented failure semantics.           |
-| 2.0   | Separately planned: runtime, mutation, and LLM adapters; optional static-first AI assist after v1.0. | Separate design, safety review, and implementation evidence; no delivery claim. |
+| Range     | Delivered outcome                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| v0.1–v0.3 | AST extraction, deterministic rules, CLI reporting, and offline evidence contracts.                    |
+| v0.4–v0.5 | Mutation-evidence input, Unit/API/E2E rule expansion, and changed-file selection.                      |
+| v0.6–v0.9 | Advisory policy, baseline, decision projection, and least-privilege GitHub Actions reference workflow. |
+| v1.0      | Explicit opt-in `FAKE`-only gate with stable `0`/`1`/`2` failure semantics.                            |
 
-## Sequencing principles
+Completed-version rationale is available in the Chinese [History](./history/product-evolution.md).
 
-1. Define false-confidence patterns before automating them.
-2. Keep deterministic evidence distinct from model inferences and execution evidence.
-3. Prefer precision and explainability over a large rule count.
-4. A CI gate must remain opt-in until stable, measured false-positive behavior exists.
+## v2.0 — pending design direction
 
-v0.7 through v0.9 remain source-only and advisory, preserving the source-only/advisory boundary: they do not execute reviewed source or change the static meaning of findings. v1.0 remains source-only and is a stable explicit opt-in quality gate, blocking only when a repository policy enables it. v2.0 runtime, mutation, and LLM adapters require a separate design and evidence. Optional AI assist is static-first and post-v1.0 only: default off, advisory-only, never emits `FAKE`/`WEAK`/`STRONG`/`INVALID`, and never changes static summary, FTR, Trust Score, exit semantics, or gate inputs. See [`docs/superpowers/specs/2026-09-08-optional-ai-assist-design.md`](./superpowers/specs/2026-09-08-optional-ai-assist-design.md).
+v2.0 is not delivered. It may add explicit runtime, mutation, and LLM adapters only after separate design approval, safety review, and implementation evidence. The retained [optional AI assist design](./superpowers/specs/2026-09-08-optional-ai-assist-design.md) is a planning input, not a delivery claim.
 
-## v0.2 compatibility matrix
+Future adapters must remain optional and must not execute reviewed source by default, read credentials implicitly, or call networks without explicit design and user control. They must not change static findings/classifications, FTR, Trust Score, existing exit semantics, or explicit gate inputs.
 
-| Framework  | Direct `test` / `it` | Nested suite names        | `test.each` / `it.each` | Parser diagnostics |
-| ---------- | -------------------- | ------------------------- | ----------------------- | ------------------ |
-| Jest       | Supported            | Supported                 | Supported syntax        | Supported          |
-| Vitest     | Supported            | Supported                 | Supported syntax        | Supported          |
-| Playwright | Supported            | `test.describe` supported | Not claimed             | Supported          |
+## Planning rules
 
-`ata.config.json` may provide `include` and `exclude` arrays of test-file basenames. This is a narrow source-selection control, not a framework runtime configuration.
-
-## v0.3 semantic-review contract
-
-`--semantic-report <path>` loads a version `1` advisory JSON artifact. Default operation is offline. `semanticProvider` configuration accepts `offline`, `openai`, or `anthropic` plus an environment-variable name and optional model; v0.3 validates configuration but never reads keys or makes network calls. [`test-quality-audit/evals/semantic-report-v1.json`](../test-quality-audit/evals/semantic-report-v1.json) is the versioned acceptance/rejection corpus for this contract.
-
-## v0.4 mutation-evidence contract
-
-`--mutation-report <path>` loads a version `1` offline artifact containing an engine label, recorded command, threshold value and source, plus total/killed/survived mutant counts and a derived score. The command is provenance only and is never executed. The adapter validates counts and score consistency; a score below the recorded threshold is advisory, not a gate, and never changes static results or exit semantics.
-
-## v0.6.0 advisory-policy contract
-
-`--policy <path>` accepts a version `1` JSON object with a non-empty `id`, `mode: "advisory"`, and optional unique non-empty `disabledRuleIds`. It is input to the source-only audit and adds policy selection counts to the output without removing findings or changing static classifications, summary values, FTR, Trust Score, or exit semantics. Invalid policy input exits `2`; there is no default CI gate or release decision.
+- This Roadmap is the only detailed source for future version plans; README and Context summarize or link it.
+- Prefer explainable, source-backed evidence over rule-count growth.
+- `FAKE` remains deterministic; contextual hints remain `WEAK` or omitted.
+- CI gates remain explicit opt-in.
 
 ## Non-commitments
 
-Dates, coverage targets, model providers, mutation engines, supported future frameworks, and gate thresholds are intentionally not committed in this roadmap. They need evidence and maintainer decisions.
+No dates, providers, mutation engines, thresholds, coverage targets, future framework support, or compatibility guarantees are committed without maintainer decisions and validation evidence.

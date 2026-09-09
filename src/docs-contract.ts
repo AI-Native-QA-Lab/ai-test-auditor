@@ -25,7 +25,6 @@ const documentPairs: readonly DocumentPair[] = [
       '--changed-since',
       '--policy',
       'advisory',
-      '0.6.0',
       'source-only audit',
       'not a default CI gate',
       'release decision',
@@ -33,13 +32,23 @@ const documentPairs: readonly DocumentPair[] = [
       'production-code-to-test relevance',
       'PARSER001',
       '`2`',
+      'v1.0 is the current stable baseline',
+      'not delivered',
+      'Why AI Test Auditor?',
+      'Quick start',
+      'Common workflows',
+      'Contributing',
+      'CONTRIBUTING.md',
+      'Core capabilities and limits',
+      'Results and exit codes',
+      'Project boundaries',
+      'Documentation',
     ],
     chineseTerms: [
       '--mutation-report',
       '--changed-since',
       '--policy',
       'advisory',
-      '0.6.0',
       '纯源码审计',
       '不是默认 CI 门禁',
       '发布决定',
@@ -47,6 +56,17 @@ const documentPairs: readonly DocumentPair[] = [
       '生产代码与测试',
       'PARSER001',
       '`2`',
+      'v1.0 是当前稳定基线',
+      '尚未交付',
+      '为什么使用 AI Test Auditor？',
+      '快速开始',
+      '常用工作流',
+      '参与贡献',
+      'CONTRIBUTING_ZH.md',
+      '核心能力与明确限制',
+      '输出与退出码',
+      '项目边界',
+      '文档导航',
     ],
   },
   {
@@ -75,49 +95,47 @@ const documentPairs: readonly DocumentPair[] = [
     english: 'docs/roadmap.md',
     chinese: 'docs/zh/roadmap.md',
     englishTerms: [
-      'v0.4',
-      '--mutation-report',
-      '--policy',
-      'advisory',
-      '0.6.0',
-      'source-only audit',
-      'no default CI gate',
-      'release decision',
-      '0.7',
-      '0.8',
-      '0.9',
+      'v1.0 is the current stable baseline',
       '2.0',
-      'source-only/advisory boundary',
       'runtime, mutation, and LLM adapters',
-      'v0.7 through v0.9 remain source-only and advisory',
-      'v1.0 remains source-only and is a stable explicit opt-in quality gate',
-      'blocking only when a repository policy enables it',
+      'source-only',
+      'explicit opt-in',
+      'not delivered',
     ],
     chineseTerms: [
-      'v0.4',
-      '--mutation-report',
-      '--policy',
-      'advisory',
-      '0.6.0',
-      '纯源码审计',
-      '不存在默认 CI 门禁',
-      '发布决定',
-      '0.7',
-      '0.8',
-      '0.9',
+      'v1.0 是当前稳定基线',
       '2.0',
-      '纯源码/建议性边界',
       '运行时、变异和 LLM 适配器',
-      'v0.7 至 v0.9 保持纯源码且建议性',
-      'v1.0 保持纯源码，并是稳定、显式 opt-in 的质量门禁',
-      '仅当仓库策略启用时才阻断',
+      '纯源码',
+      '显式 opt-in',
+      '尚未交付',
     ],
   },
   {
-    english: 'docs/process/implementation-record.md',
-    chinese: 'docs/process/implementation-record_zh.md',
-    englishTerms: ['historical RED/GREEN evidence is not recorded'],
-    chineseTerms: ['历史 RED/GREEN 证据未记录'],
+    english: 'docs/context.md',
+    chinese: 'docs/zh/context.md',
+    englishTerms: [
+      'v1.0',
+      'source-only',
+      'Roadmap',
+      'FAKE',
+      'WEAK',
+      'UNASSESSED',
+      'Trust Score',
+      'FTR',
+      '2026-09-08-optional-ai-assist-design.md',
+    ],
+    chineseTerms: [
+      'v1.0',
+      '纯源码',
+      '迭代计划',
+      'FAKE',
+      'WEAK',
+      'UNASSESSED',
+      'Trust Score',
+      'FTR',
+      '2026-09-08-optional-ai-assist-design.md',
+    ],
   },
   {
     english: 'docs/architecture.md',
@@ -247,7 +265,7 @@ const githubReferenceDocuments: readonly PublicDocument[] = [
   {
     path: 'README.md',
     terms: [
-      'v0.9.0 GitHub Actions reference workflow',
+      'GitHub Actions reference workflow',
       '`base-ref`',
       '`--changed-since`',
       '`contents: read`',
@@ -257,7 +275,7 @@ const githubReferenceDocuments: readonly PublicDocument[] = [
   {
     path: 'README_ZH.md',
     terms: [
-      'v0.9.0 GitHub Actions 参考工作流',
+      'GitHub Actions 参考工作流',
       '`base-ref`',
       '`--changed-since`',
       '`contents: read`',
@@ -318,7 +336,7 @@ const gateBoundaryDocuments: readonly PublicDocument[] = [
   {
     path: 'README.md',
     terms: [
-      'v1.0.0 explicit opt-in policy gate',
+      'explicit opt-in policy gate',
       'ata gate',
       'blockOn',
       'WEAK does not block',
@@ -326,12 +344,7 @@ const gateBoundaryDocuments: readonly PublicDocument[] = [
   },
   {
     path: 'README_ZH.md',
-    terms: [
-      'v1.0.0 显式 opt-in 策略门禁',
-      'ata gate',
-      'blockOn',
-      'WEAK 不阻断',
-    ],
+    terms: ['显式 opt-in 策略门禁', 'ata gate', 'blockOn', 'WEAK 不阻断'],
   },
   {
     path: 'docs/requirements.md',
@@ -377,6 +390,35 @@ const gateBoundaryDocuments: readonly PublicDocument[] = [
   },
 ];
 
+const documentationArchitectureDocuments: readonly PublicDocument[] = [
+  {
+    path: 'docs/history/product-evolution.md',
+    terms: ['产品演进', 'v1.0'],
+  },
+  {
+    path: 'docs/history/architecture-decisions.md',
+    terms: ['架构决策', 'v1.0'],
+  },
+  {
+    path: 'docs/history/implementation-notes.md',
+    terms: ['实施经验', 'v1.0', '材料决策', '验证命令', '已知限制'],
+  },
+  {
+    path: 'AGENTS.md',
+    terms: [
+      'v1.0',
+      'docs/roadmap.md',
+      'docs/context.md',
+      'FAKE',
+      'WEAK',
+      'UNASSESSED',
+      'FTR',
+      'Trust Score',
+      'docs/history/implementation-notes.md',
+    ],
+  },
+];
+
 export async function validateBilingualPublicMarkers(): Promise<string[]> {
   const violations: string[] = [];
   const contents = new Map<string, string>();
@@ -406,6 +448,10 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
     const content = await readDocument(document.path, contents);
     addMissingTerms(violations, document.path, content, document.terms);
   }
+  for (const document of documentationArchitectureDocuments) {
+    const content = await readDocument(document.path, contents);
+    addMissingTerms(violations, document.path, content, document.terms);
+  }
 
   const [englishRules, chineseRules] = await Promise.all([
     readDocument('docs/rules.md', contents),
@@ -426,10 +472,8 @@ export async function validateBilingualPublicMarkers(): Promise<string[]> {
       'Exit code rows differ between README.md and README_ZH.md.',
     );
   }
-  if (!exitCodeMeaning(englishReadme, '2').includes('invalid policy input')) {
-    violations.push(
-      'README.md exit code 2 row must include invalid policy input.',
-    );
+  if (!exitCodeMeaning(englishReadme, '2').includes('invalid policy')) {
+    violations.push('README.md exit code 2 row must include invalid policy.');
   }
   if (!exitCodeMeaning(chineseReadme, '2').includes('无效策略输入')) {
     violations.push('README_ZH.md exit code 2 row must include 无效策略输入。');
@@ -506,11 +550,12 @@ function addRoadmapPhaseViolations(
   path: string,
   content: string,
 ): void {
-  const expected = ['0.6.0', '0.7', '0.8', '0.9', '1.0', '2.0'];
-  const actual = [
-    ...content.matchAll(/^\| (0\.6\.0|0\.7|0\.8|0\.9|1\.0|2\.0)\s*\|/gm),
-  ].map((match) => match[1] ?? '');
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+  const expected = ['v1.0', 'v2.0'];
+  const positions = expected.map((phase) => content.indexOf(phase));
+  if (
+    positions.some((position) => position < 0) ||
+    positions[0] >= positions[1]
+  ) {
     violations.push(
       `${path} must list roadmap phases in order: ${expected.join(', ')}.`,
     );
