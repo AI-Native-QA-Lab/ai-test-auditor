@@ -121,7 +121,7 @@ describe('ata review', () => {
     const invocation = await invoke(['--version']);
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('0.8.0');
+    expect(invocation.stdout).toContain('0.9.0');
   });
 
   it('keeps a matching baseline FAKE exit code and returns baseline JSON', async () => {

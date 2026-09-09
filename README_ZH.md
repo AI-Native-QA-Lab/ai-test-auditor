@@ -123,6 +123,10 @@ node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
 
 `ata decision ./decision-envelope.json` 将严格的本地 version `1` 静态审计信封转换为简洁的 JSON 建议性决策。有效决策返回 `0`；无效或不支持的信封返回 `2`。它拒绝未知字段和 `semantic`/`mutation` 附件。策略和基线 ID 仅作上下文；该决策不是 CI 门禁、通过/失败结果、豁免或发布决定。
 
+## v0.9.0 GitHub Actions 参考工作流
+
+`.github/workflows/audit-reference.yml` 是显式 opt-in 的 GitHub Actions 参考工作流。`pull_request` 使用 PR base SHA；手动 `workflow_dispatch` 必须提供 `base-ref`。它运行 `--changed-since`，将静态审计与建议性决策写入 Job Summary，并保留审计退出码。它仅使用 `contents: read`，不创建 PR 评论、不使用凭据，也不执行被审计源码。
+
 ### 退出码
 
 | 代码 | 含义                                                               |

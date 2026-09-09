@@ -1,0 +1,59 @@
+name: Audit Reference
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: Local commit or ref used to select changed supported test files.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base-ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Audit changed test source and publish advisory decision
+        run: |
+          set +e
+          node dist/cli.js review . --changed-since "$BASE_REF" --format json > audit.json
+          audit_exit=$?
+          set -e
+
+          if [ "$audit_exit" -eq 2 ]; then
+            exit 2
+          fi
+          if [ "$audit_exit" -ne 0 ] && [ "$audit_exit" -ne 1 ]; then
+            echo "Unexpected static audit exit code: $audit_exit." >&2
+            exit 2
+          fi
+
+          node .github/scripts/create-decision-envelope.mjs audit.json > decision-envelope.json
+          node dist/cli.js decision decision-envelope.json > decision.json
+
+          {
+            echo '## Static audit'
+            echo '```json'
+            cat audit.json
+            echo '```'
+            echo '## Advisory decision'
+            echo '```json'
+            cat decision.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$audit_exit"

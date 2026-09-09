@@ -169,7 +169,7 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('0.8.0')
+    .version('0.9.0')
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,

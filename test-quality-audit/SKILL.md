@@ -14,6 +14,7 @@ Review supplied test source for evidence-bounded test-quality risks. The central
 - Treat an optional advisory policy as input to the source-only audit: it can present disabled/active selection counts, but cannot remove static findings, change classifications or exit codes, create a CI gate, or make a release decision. Do not execute test, model, or mutation commands.
 - Treat an optional version `1` baseline as advisory identity evidence only: historical findings are not accepted or waived and do not change findings, classifications, scores, policy counts, or exit codes.
 - Treat `ata decision` output as a versioned advisory summary only: it is not a CI gate, pass/fail result, waiver, or release decision.
+- Treat a GitHub Actions reference workflow as source-only advisory presentation: its required manual `base-ref` or PR base SHA selects changed tests, and it must not create PR comments or execution evidence.
 - An unflagged test is `UNASSESSED`, not `STRONG`.
 - For Chinese output, read [SKILL_ZH.md](./SKILL_ZH.md) and `prompts/test-quality-audit-zh.md`.
 

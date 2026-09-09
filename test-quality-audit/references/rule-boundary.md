@@ -1,5 +1,7 @@
 # Rule Boundary
 
+The GitHub Actions reference workflow uses `base-ref` to select changed source and may render an advisory result, but it never creates a PR comment or execution evidence.
+
 This Skill mirrors the current CLI scope. It can cite UT001, UT002, UT003, UT004, UT008, UT011, API001, API002, E2E001, E2E002, E2E003, and E2E004 only when their documented syntax is present. Read the repository [rule catalog](../../docs/rules.md) for triggers and exclusions.
 
 | Classification  | Use only when                                                               |

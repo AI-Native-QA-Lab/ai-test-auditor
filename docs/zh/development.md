@@ -53,3 +53,5 @@ git diff --check
 ## CI
 
 GitHub workflow 在 Node 20 下运行同样的 test、lint、typecheck、format check 和 build。它不把 benchmark 源码当作被执行测试，也不作外部发布决策。
+
+`audit-reference.yml` 是独立示例：`pull_request` 使用 base SHA，手动运行需要 `base-ref`，两份 JSON 工件写入 GitHub Job Summary，且不创建 PR 评论。

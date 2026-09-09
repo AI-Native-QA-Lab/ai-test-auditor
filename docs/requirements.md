@@ -31,6 +31,7 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 - A supplied version `1` baseline may report historical/new finding identity counts only. Historical does not accept a finding or change static classifications, summary values, FTR, Trust Score, policy counts, or exit semantics; invalid baseline input exits `2`.
 - A supplied, versioned semantic report may be validated and displayed as offline advisory evidence; no model is executed and it does not change static classifications or exit semantics.
 - English-first public documentation, Chinese translation, benchmark fixtures, CI, and standalone Skill assets.
+- The GitHub Actions reference workflow accepts a PR base SHA or manual `base-ref`, selects changed supported test files, and publishes advisory output without becoming a gate.
 
 ## Out of scope
 
