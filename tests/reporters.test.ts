@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderJson, renderText } from '../src/reporters';
+import { renderHtml, renderJson, renderText } from '../src/reporters';
 import type { AuditResult } from '../src/core/types';
 
 const result: AuditResult = {
@@ -102,6 +102,15 @@ describe('reporters', () => {
 
   it('renders the complete audit result as parseable JSON', () => {
     expect(JSON.parse(renderJson(result))).toEqual(result);
+  });
+
+  it('renders a standalone filterable HTML report without test source', () => {
+    const output = renderHtml(result, 'zh-CN');
+    expect(output).toContain('<!doctype html>');
+    expect(output).toContain('筛选发现项');
+    expect(output).toContain('data-classification="FAKE"');
+    expect(output).toContain('example.test.ts');
+    expect(output).not.toContain(result.tests[0]?.source ?? '');
   });
 
   it('renders mutation evidence as advisory only', () => {

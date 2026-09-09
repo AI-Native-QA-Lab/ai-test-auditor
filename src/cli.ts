@@ -1,10 +1,17 @@
 #!/usr/bin/env node
 
 import { pathToFileURL } from 'node:url';
+import { rename, rm, writeFile } from 'node:fs/promises';
+import { dirname, basename, join } from 'node:path';
 import { Command, CommanderError, Option } from 'commander';
 import { auditPath, InputPathError, type ReviewType } from './core/audit.js';
 import { ChangedFilesError } from './core/changed-files.js';
-import { renderJson, renderText } from './reporters.js';
+import {
+  renderHtml,
+  renderJson,
+  renderText,
+  type ReportLocale,
+} from './reporters.js';
 import { SemanticReportError, loadSemanticReport } from './core/semantic.js';
 import { MutationReportError, loadMutationReport } from './core/mutation.js';
 import { PolicyError } from './core/policy.js';
@@ -27,7 +34,7 @@ const defaultIo: CliIo = {
   stderr: (text) => process.stderr.write(text),
 };
 
-type OutputFormat = 'text' | 'json';
+type OutputFormat = 'text' | 'json' | 'html';
 
 export async function runCli(
   args: readonly string[],
@@ -67,9 +74,11 @@ export async function runCli(
     .option('--baseline <path>', 'versioned advisory finding-baseline JSON')
     .addOption(
       new Option('--format <format>', 'output format')
-        .choices(['text', 'json'])
+        .choices(['text', 'json', 'html'])
         .default('text'),
     )
+    .option('--locale <locale>', 'human-readable report locale', 'en')
+    .option('--output <path>', 'write the report to a file')
     .addHelpText(
       'after',
       '\nExit codes:\n  0  No FAKE findings\n  1  One or more FAKE findings\n  2  Invalid command or input\n',
@@ -80,6 +89,8 @@ export async function runCli(
         options: {
           readonly type: ReviewType;
           readonly format: OutputFormat;
+          readonly locale: ReportLocale;
+          readonly output?: string;
           readonly config?: string;
           readonly changedSince?: string;
           readonly semanticReport?: string;
@@ -102,11 +113,16 @@ export async function runCli(
           ? await loadMutationReport(options.mutationReport)
           : undefined;
         const rendered = { ...result, semantic, mutation };
-        io.stdout(
+        if (options.locale !== 'en' && options.locale !== 'zh-CN')
+          throw new InputPathError('Unsupported locale. Use en or zh-CN.');
+        const text =
           options.format === 'json'
             ? renderJson(rendered)
-            : renderText(rendered),
-        );
+            : options.format === 'html'
+              ? renderHtml(rendered, options.locale)
+              : renderText(rendered);
+        if (options.output) await writeReport(options.output, text);
+        else io.stdout(text);
         resultCode =
           result.summary.invalid > 0 ? 2 : result.summary.fake > 0 ? 1 : 0;
       },
@@ -182,6 +198,17 @@ export async function runCli(
       return 2;
     }
     throw error;
+  }
+}
+
+async function writeReport(path: string, text: string): Promise<void> {
+  const temporary = join(dirname(path), `.${basename(path)}.tmp`);
+  try {
+    await writeFile(temporary, text, 'utf8');
+    await rename(temporary, path);
+  } catch {
+    await rm(temporary, { force: true });
+    throw new InputPathError(`Report cannot be written: ${path}`);
   }
 }
 
