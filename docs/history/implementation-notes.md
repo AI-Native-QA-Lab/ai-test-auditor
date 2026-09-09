@@ -33,3 +33,7 @@
 ## 2026-09-09 npm 分发边界
 
 `v1.0.1` 将 npm 发布物限制为编译后的 `dist/`、双语 README 与许可证；源码、测试、历史过程资料和 CI 配置保留在 GitHub 仓库，不进入运行时 CLI 包。`prepack` 在打包和发布前执行 TypeScript 构建，避免分发过期产物。
+
+## 2026-09-09 npm 运行时依赖修复
+
+发布后的 CLI 在全局安装环境中会加载 TypeScript Compiler API；因此 `typescript` 必须位于 `dependencies`，不能仅位于 `devDependencies`。`v1.0.2` 以补丁版本修正该 manifest 契约，并增加回归测试以防止再次遗漏。

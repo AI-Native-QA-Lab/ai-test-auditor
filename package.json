@@ -1,6 +1,6 @@
 {
   "name": "ai-test-auditor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Source-backed audit tool for test quality",
   "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
@@ -32,10 +32,10 @@
     "@typescript-eslint/parser": "^8.5.0",
     "eslint": "^9.10.0",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4",
     "vitest": "^2.0.5"
   },
   "dependencies": {
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "typescript": "^5.5.4"
   }
 }

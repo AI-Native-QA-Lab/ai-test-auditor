@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
 import { rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, basename, join } from 'node:path';
 import { Command, CommanderError, Option } from 'commander';
@@ -227,7 +228,10 @@ function createProgram(io: CliIo): Command {
 }
 
 const entryPoint = process.argv[1];
-if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
+if (
+  entryPoint &&
+  import.meta.url === pathToFileURL(realpathSync(entryPoint)).href
+) {
   void runCli(process.argv.slice(2)).then((code) => {
     process.exitCode = code;
   });
