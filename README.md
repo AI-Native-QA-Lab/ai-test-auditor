@@ -46,7 +46,13 @@ node dist/cli.js review ./tests --baseline ./finding-baseline.json
 # Project a strict advisory decision or evaluate an explicit gate.
 node dist/cli.js decision ./decision-envelope.json
 node dist/cli.js gate ./gate-policy.json ./audit-envelope.json
+
+# Generate a local, filterable report (English is the default).
+node dist/cli.js review ./tests --format html --output audit.html
+node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
 ```
+
+`--output` works with text, json, and html. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
 
 `--policy` is advisory: it reports disabled/active selection counts only and does not change findings, classifications, summary values, FTR, Trust Score, or exit semantics. Invalid policy input exits `2`; it is not a default CI gate or a release decision. `ata decision` is also advisory: a valid decision exits `0`, while invalid input exits `2`.
 
