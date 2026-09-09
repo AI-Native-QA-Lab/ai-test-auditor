@@ -35,6 +35,10 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 
 ## CI-neutral decision boundary
 
+## FAKE-only gate boundary
+
+The explicit `ata gate` command is a FAKE-only gate: it requires `mode: "gate"` and `blockOn: ["FAKE"]`. WEAK never blocks, and a passed gate does not prove a test is STRONG.
+
 `ata decision` projects only validated static summary facts into a version `1` advisory decision. It rejects semantic/mutation attachments and unknown fields; policy/baseline IDs are context only. A valid decision returns `0`, but it is not a CI gate, waiver, release decision, or proof that unflagged tests are `STRONG`.
 
 The v0.9 GitHub Actions reference workflow selects changed supported test files from a PR base SHA or manual `base-ref`, projects only allowed fields into `ata decision`, and preserves the static audit exit code. Its Job Summary is advisory; it creates no PR comments.

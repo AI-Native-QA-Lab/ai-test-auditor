@@ -14,3 +14,5 @@ test('creates an order', async () => {
 - **Deterministic finding:** `API001`, `WEAK`, because the only recognized assertion checks response status.
 - **Review question:** Which response fields or persisted effects define a successful order? This cannot be inferred from the source.
 - **Boundary:** No execution, endpoint contract, or database evidence was supplied.
+
+An explicit v1.0.0 FAKE-only gate can consume a projected static snapshot with `ata gate`; WEAK does not block and a pass is not STRONG evidence.

@@ -16,3 +16,5 @@ Do not report `INVALID` for import, fixture, dependency, syntax, or runtime fail
 An optional version `1` policy (`id`, `mode: "advisory"`, and optional unique `disabledRuleIds`) is input to the source-only audit. It only presents disabled/active selection counts; it never executes test, model, or mutation commands, removes a finding, changes static classifications or exit semantics, becomes a CI gate, or makes a release decision.
 
 An optional version `1` baseline records unique finding identities (`ruleId`, root-relative POSIX `filePath`, `line`, `classification`, and `severity`). Historical/new counts are advisory identity evidence only: historical findings are neither accepted nor waived and cannot change findings, classifications, scores, policy counts, or exit semantics.
+
+An explicit gate policy uses `mode: "gate"` with `blockOn: ["FAKE"]`. The FAKE-only gate consumes a strict static snapshot, never executes source, and never blocks on WEAK.

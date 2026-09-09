@@ -17,7 +17,7 @@ npm install
 2. For every feature, bug fix, refactor, or behavior change, write one focused test and run it to confirm the expected RED failure.
 3. Implement the narrowest change, rerun the focused test until GREEN, and refactor only while the suite remains green.
 4. Update English and Chinese docs plus Skill references when public behavior changes; the bilingual public-marker guard compares shared rule IDs/classifications, exit-code rows, and key public options.
-5. Record material choices, scope, and validation in `docs/process/implementation-record.md`.
+5. Record material choices, scope, and validation in the Chinese [implementation notes](./history/implementation-notes.md).
 
 ## Commands
 

@@ -29,6 +29,7 @@ optional_baseline: <paste advisory baseline JSON>
 6. Treat a supplied advisory policy as source-only audit input: it may explain disabled/active selection counts only. It cannot remove findings, alter classifications, summary, or exit semantics, act as a CI gate, or make a release decision.
 7. Treat a supplied version `1` baseline as identity membership only. Historical findings are not accepted, waived, resolved, or strong, and baseline counts cannot change static findings, scores, policy counts, or exit semantics.
 8. Treat `ata decision` as an advisory static summary with reason codes only; it is not a CI gate, release decision, or evidence that unflagged tests are strong.
+9. Treat `ata gate` as an explicit FAKE-only gate; it must not block on WEAK or infer STRONG.
 
 ## Response format
 

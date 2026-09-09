@@ -2,199 +2,95 @@
 
 # AI Test Auditor
 
-> Don't trust AI-generated tests. Verify them.
-
 [![CI](https://github.com/naodeng/ai-test-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/naodeng/ai-test-auditor/actions/workflows/ci.yml)
 
-**AI Test Auditor** is a local-first CLI for finding deterministic signs of ineffective JavaScript and TypeScript tests. It audits test _source_; it does not run the tests it reads.
+> Do not trust AI-generated tests. Verify their static evidence.
 
-The governing question is simple: **if production behavior is wrong, can this test actually fail?**
+AI Test Auditor is a local-first, source-only audit for deterministic signs of ineffective JavaScript and TypeScript tests. It reads test source; it does not import or execute it.
 
-## What it does
+## Why AI Test Auditor?
 
-- Scans `.test.ts`, `.spec.ts`, `.test.tsx`, `.spec.tsx`, `.test.js`, `.spec.js`, and `.e2e.ts` files.
-- Extracts direct Jest, Vitest, and Playwright `test` / `it` callbacks with the TypeScript AST.
-- Reports high-confidence deterministic `FAKE` and `WEAK` findings with source locations and remediations.
-- Produces human-readable or JSON output through `ata review`.
-- Ships a standalone, bilingual `test-quality-audit` Skill and evidence-bounded prompts.
-- Loads optional, versioned mutation evidence through `--mutation-report` without running a mutation tool.
-- Selects current supported test files changed since a local commit with `--changed-since <ref>`.
-- Loads an optional versioned `--policy <path>` file for advisory presentation and selection counts.
+Tests can look complete while failing to verify observable behavior. This tool surfaces narrow, source-backed signals of false confidence before a team relies on a test.
 
-## What the tool does not do
+## Core capabilities and limits
 
-It does **not** execute tests, inspect runtime behavior, invoke an LLM, run mutation testing, calculate coverage, validate imports/fixtures, or mark an unflagged test `STRONG`. An unflagged test is `UNASSESSED`.
+It extracts direct Jest, Vitest, and Playwright callbacks and reports source-located `FAKE` or `WEAK` findings with remediation. It supports changed-file selection, optional mutation evidence, advisory policy, baseline comparison, advisory decision projection, and an explicit opt-in policy gate.
 
-## v0.4 mutation evidence
-
-Pass a report created by your own mutation workflow:
-
-```bash
-node dist/cli.js review ./tests --mutation-report ./mutation-report.json --format json
-```
-
-```json
-{
-  "version": "1",
-  "engine": "stryker",
-  "command": "npx stryker run",
-  "threshold": {
-    "minimumScore": 80,
-    "source": "stryker.conf.json: thresholds.high"
-  },
-  "result": {
-    "totalMutants": 10,
-    "killed": 8,
-    "survived": 2,
-    "score": 80
-  }
-}
-```
-
-The recorded command and threshold source are required provenance, not instructions: AI Test Auditor never executes the command. A score below `minimumScore` is valid advisory evidence; it never changes static classifications, FTR, Trust Score, or the process exit code.
+It does not run tests, inspect runtime behavior, invoke an LLM, calculate coverage, or infer production-code-to-test relevance. An unflagged test is `UNASSESSED`, never `STRONG`. FTR and Trust Score are prioritization aids, not release decisions.
 
 ## Quick start
 
-Requires Node.js 20 or newer.
+Requires Node.js 20+.
 
 ```bash
 npm install
 npm run build
-node dist/cli.js review ./tests
+node dist/cli.js review ./tests --format json
 ```
 
-Review one file, force a test category, or request machine-readable output:
+The installed package exposes the same command as `ata review [path]`. A source checkout uses `node dist/cli.js review [path]`.
+
+Expected result: JSON lists extracted tests and any deterministic findings; exit `1` means at least one `FAKE`, while `0` does not prove tests are strong.
+
+## Common workflows
 
 ```bash
-node dist/cli.js review tests/checkout.e2e.ts --type e2e
-node dist/cli.js review benchmarks --format json
-node dist/cli.js review . --changed-since HEAD~1
+# Select supported test files changed since a local ref.
+node dist/cli.js review . --changed-since HEAD~1 --format json
+
+# Add versioned evidence or advisory context without changing static meaning.
+node dist/cli.js review ./tests --mutation-report ./mutation-report.json
+node dist/cli.js review ./tests --policy ./audit-policy.json
+node dist/cli.js review ./tests --baseline ./finding-baseline.json
+
+# Project a strict advisory decision or evaluate an explicit gate.
+node dist/cli.js decision ./decision-envelope.json
+node dist/cli.js gate ./gate-policy.json ./audit-envelope.json
+
+# Generate a local, filterable report (English is the default).
+node dist/cli.js review ./tests --format html --output audit.html
+node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
 ```
 
-## v0.6.0 advisory policy
+`--output` works with text, json, and html. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
 
-Pass an explicit, local JSON policy to annotate the unchanged source-only audit:
+`--policy` is advisory: it reports disabled/active selection counts only and does not change findings, classifications, summary values, FTR, Trust Score, or exit semantics. Invalid policy input exits `2`; it is not a default CI gate or a release decision. `ata decision` is also advisory: a valid decision exits `0`, while invalid input exits `2`.
 
-```bash
-node dist/cli.js review ./tests --policy ./audit-policy.json --format json
-```
+The explicit opt-in policy gate accepts only `mode: "gate"` with `blockOn: ["FAKE"]`: run it with `ata gate`. `WEAK does not block`; a pass is not evidence that tests are strong. The GitHub Actions reference workflow uses `base-ref`, `--changed-since`, and `contents: read`; it does not create PR comments.
 
-```json
-{
-  "version": "1",
-  "id": "local-review-policy",
-  "mode": "advisory",
-  "disabledRuleIds": ["UT002"]
-}
-```
+## Results and exit codes
 
-`disabledRuleIds` is optional and contains unique non-empty rule IDs. Policy is advisory only: it reports disabled and active finding counts, but does not remove findings or change static classifications, the summary, FTR, Trust Score, or exit codes. Invalid policy input exits `2`. This is not a default CI gate and does not make a release decision.
+`FAKE` is deterministic syntactic evidence, `WEAK` is non-blocking context, and `UNASSESSED` means no static conclusion. FTR and Trust Score prioritize review work; they do not measure runtime quality.
 
-The installed package exposes the same command as `ata review [path]`; a source checkout can use `node dist/cli.js review [path]`. Both default to the current directory and never import or execute target source. The `--changed-since` ref is local; it selects only current supported test files and does not infer production-code-to-test relevance.
+| Code | Meaning                                                                                        |
+| ---- | ---------------------------------------------------------------------------------------------- |
+| `0`  | No deterministic `FAKE` was emitted; this does not prove tests are strong.                     |
+| `1`  | At least one deterministic `FAKE` was emitted.                                                 |
+| `2`  | Invalid command, path, invalid policy input, input, or selected source, including `PARSER001`. |
 
-## v0.7.0 baseline comparison
+## Project boundaries
 
-Pass a local version `1` baseline to label current findings by stable identity:
-
-```bash
-node dist/cli.js review ./tests --baseline ./finding-baseline.json --format json
-```
-
-```json
-{
-  "version": "1",
-  "id": "main",
-  "findings": [
-    {
-      "ruleId": "UT002",
-      "filePath": "tests/example.test.ts",
-      "line": 12,
-      "classification": "FAKE",
-      "severity": "CRITICAL"
-    }
-  ]
-}
-```
-
-The identity is rule ID, root-relative POSIX path, line, classification, and severity. Baseline output reports historical and new finding counts only. Historical does not mean accepted, safe, waived, or resolved; it does not change static classifications, findings, FTR, Trust Score, policy counts, or exit semantics. Invalid baseline input exits `2`.
-
-## v0.8.0 CI-neutral advisory decision
-
-`ata decision ./decision-envelope.json` converts a strict local version `1` static-audit envelope into a compact JSON advisory decision. A valid decision exits `0`; invalid or unsupported envelopes exit `2`. It rejects unknown fields and `semantic`/`mutation` attachments. Policy and baseline IDs are context only; the decision never acts as a CI gate, pass/fail result, waiver, or release decision.
-
-## v0.9.0 GitHub Actions reference workflow
-
-`.github/workflows/audit-reference.yml` is an opt-in GitHub Actions reference workflow. On `pull_request` it uses the PR base SHA; manual `workflow_dispatch` runs require a `base-ref`. It runs `--changed-since`, writes the static audit and advisory decision to the Job Summary, and preserves the audit exit code. It uses only `contents: read`, does not create PR comments, use credentials, or execute reviewed source.
-
-### Exit codes
-
-| Code | Meaning                                                                                               |
-| ---- | ----------------------------------------------------------------------------------------------------- |
-| `0`  | No deterministic `FAKE` finding was emitted. This is not proof that tests are strong.                 |
-| `1`  | At least one deterministic `FAKE` finding was emitted.                                                |
-| `2`  | The command, invalid policy input, input path, or selected source is invalid (including `PARSER001`). |
-
-## Example
-
-```ts
-test('total', () => {
-  expect(true).toBe(true);
-});
-```
-
-```text
-... [CRITICAL] [FAKE] UT002
-  UT002 compares the same literal value on both sides of an assertion.
-```
-
-## Deterministic rules
-
-| ID     | Classification | Trigger                                                                |
-| ------ | -------------- | ---------------------------------------------------------------------- |
-| UT001  | FAKE           | Unit test has no `expect` call.                                        |
-| UT002  | FAKE           | Same primitive literal is asserted against itself.                     |
-| UT003  | FAKE           | An expression is asserted against the identical expression.            |
-| UT008  | FAKE           | A caught error is only swallowed or logged.                            |
-| UT011  | FAKE           | Both sides call the same callee with structurally identical arguments. |
-| UT004  | WEAK           | Every assertion only checks defined/truthy existence.                  |
-| API001 | WEAK           | An API test asserts only `response.status` / `statusCode`.             |
-| API002 | WEAK           | An API test only checks `response.body` / `response.data` existence.   |
-| E2E001 | FAKE           | A Playwright test has no `expect` assertion.                           |
-| E2E002 | WEAK           | A Playwright test asserts only the URL.                                |
-| E2E003 | WEAK           | A Playwright test asserts only visibility.                             |
-| E2E004 | WEAK           | A Playwright test uses numeric `page.waitForTimeout`.                  |
-
-Rules deliberately trade breadth for explainable, source-backed evidence. Read the [full rule catalog](./docs/rules.md) before treating an output as a release decision.
-
-## Trust score and Fake Test Ratio
-
-- **Fake Test Ratio (FTR)** = `fake / assessed * 100`, where `assessed` is tests classified as `FAKE`, `WEAK`, or `INVALID`. `UNASSESSED` tests are excluded.
-- **Trust Score** = `max(0, 100 - critical findings × 25 - warning findings × 10)`.
-
-They are prioritization aids, not measurements of runtime quality, mutation score, or production readiness.
-
-## Repository map
-
-```text
-src/                 CLI, AST extraction, deterministic rules, reporters
-tests/               Unit and CLI contract tests
-benchmarks/          Small source-only fixtures for manual CLI checks
-test-quality-audit/  Bilingual installable Skill, prompts, examples, eval cases
-docs/                Requirements, architecture, rules, roadmap, development, process record
-.github/workflows/   CI quality checks
-```
+The auditor never imports, executes, or evaluates reviewed source. It does not prove test strength, runtime quality, coverage, mutation score, or release readiness.
 
 ## Documentation
 
-- [Product requirements](./docs/requirements.md) · [中文](./docs/zh/requirements.md)
+Read the [rule catalog](./docs/rules.md) before treating output as a release decision.
+
+- [Requirements](./docs/requirements.md) · [中文](./docs/zh/requirements.md)
 - [Architecture](./docs/architecture.md) · [中文](./docs/zh/architecture.md)
-- [Rule catalog](./docs/rules.md) · [中文](./docs/zh/rules.md)
 - [Roadmap](./docs/roadmap.md) · [中文](./docs/zh/roadmap.md)
-- [Development guide](./docs/development.md) · [中文](./docs/zh/development.md)
-- [Implementation record](./docs/process/implementation-record.md) · [中文](./docs/process/implementation-record_zh.md)
+- [Project Context](./docs/context.md) · [中文](./docs/zh/context.md)
+- [Development](./docs/development.md) · [中文](./docs/zh/development.md)
+- [Chinese implementation notes](./docs/history/implementation-notes.md)
 - [Contributing](./CONTRIBUTING.md) · [中文](./CONTRIBUTING_ZH.md)
 
-## Development
+## Next
+
+v1.0 is the current stable baseline. v2.0 is not delivered; its optional runtime, mutation, and AI/LLM directions are described only in the [Roadmap](./docs/roadmap.md).
+
+## Contributing
+
+See the [contribution guide](./CONTRIBUTING.md). Before opening a change, run:
 
 ```bash
 npm test
@@ -204,11 +100,8 @@ npm run format:check
 npm run build
 ```
 
-See [AGENTS.md](./AGENTS.md) for repository conventions and [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution expectations.
+See [AGENTS.md](./AGENTS.md) for repository rules and [Development](./docs/development.md) for the full workflow.
 
 ## License
 
-This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE).
-Commercial use is not a permitted purpose under this license. Read the
-[official terms](https://polyformproject.org/licenses/noncommercial/1.0.0)
-before using, copying, or distributing the software.
+This project uses the [PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use is not permitted; read the [official terms](https://polyformproject.org/licenses/noncommercial/1.0.0).

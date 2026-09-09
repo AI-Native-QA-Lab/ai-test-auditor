@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "id": "repository-static-fake-gate",
+  "mode": "gate",
+  "blockOn": ["FAKE"]
+}
