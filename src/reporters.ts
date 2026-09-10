@@ -99,6 +99,33 @@ const ruleDescriptions = {
   },
 } as const;
 
+const chineseFindingCopy = {
+  E2E001: {
+    message:
+      'E2E001 未在此 Playwright 流程中识别到 expect 断言。静态分析无法证明仅有导航或操作即可验证用户可见结果。',
+    remediation:
+      '补充对可观察用户结果或状态变化的断言。静态分析无法判断每个预期的流程结果是否都已覆盖。',
+  },
+  E2E002: {
+    message:
+      'E2E002 仅验证页面 URL。静态分析无法判断仅验证导航是否足以证明用户旅程完成。',
+    remediation:
+      '补充对用户可见结果或状态变化的断言。静态分析无法判断所有有意义的用户旅程结果。',
+  },
+  E2E003: {
+    message:
+      'E2E003 仅验证元素可见性。静态分析无法判断可见 UI 是否足以证明用户旅程完成。',
+    remediation:
+      '补充对用户可见值、状态变化或已完成结果的断言。静态分析无法判断所有有意义的用户旅程结果。',
+  },
+  E2E004: {
+    message:
+      'E2E004 使用了数字字面量形式的 page.waitForTimeout 等待。静态分析无法判断该等待是否由外部系统所必需。',
+    remediation:
+      '改为等待明确的页面条件或网络结果。静态分析无法验证所有异步依赖。',
+  },
+} as const;
+
 export function renderJson(result: AuditResult): string {
   return `${JSON.stringify(result, null, 2)}\n`;
 }
@@ -230,7 +257,7 @@ export function renderHtml(
       remediation,
     }),
   );
-  const cardHtml = data.map((finding) => {
+  const cardHtml = data.map((finding, index) => {
     const classification = classificationLabels[locale][finding.classification];
     const severity = severityLabels[locale][finding.severity];
     const ruleDescription =
@@ -240,21 +267,36 @@ export function renderHtml(
     const ruleTitle = ruleDescription
       ? `${finding.ruleId}${locale === 'zh-CN' ? '：' : ': '}${ruleDescription}`
       : finding.ruleId;
-    return `<article class="finding" data-classification="${escapeHtml(finding.classification)}" data-rule="${escapeHtml(finding.ruleId)}" data-file="${escapeHtml(finding.filePath)}"><header><b>${escapeHtml(classification)} (${escapeHtml(finding.classification)})</b> <code tabindex="0" title="${escapeHtml(ruleTitle)}" aria-label="${escapeHtml(ruleTitle)}">${escapeHtml(finding.ruleId)}</code> · ${escapeHtml(severity)} (${escapeHtml(severity)}) · ${escapeHtml(finding.filePath)}:${finding.line}</header><p>${escapeHtml(finding.message)}</p><details><summary>${escapeHtml(t.remediation)}</summary><p>${escapeHtml(finding.remediation)}</p></details></article>`;
+    const localizedCopy =
+      locale === 'zh-CN'
+        ? chineseFindingCopy[finding.ruleId as keyof typeof chineseFindingCopy]
+        : undefined;
+    const message = localizedCopy?.message ?? finding.message;
+    const remediation = localizedCopy?.remediation ?? finding.remediation;
+    const tooltipId = `rule-tooltip-${index}`;
+    return `<article class="finding" data-classification="${escapeHtml(finding.classification)}" data-rule="${escapeHtml(finding.ruleId)}" data-file="${escapeHtml(finding.filePath)}"><header><b>${escapeHtml(classification)} (${escapeHtml(finding.classification)})</b> <span class="rule-id" tabindex="0" aria-describedby="${tooltipId}"><code title="${escapeHtml(ruleTitle)}" aria-label="${escapeHtml(ruleTitle)}">${escapeHtml(finding.ruleId)}</code><span id="${tooltipId}" class="rule-tooltip" role="tooltip">${escapeHtml(ruleTitle)}</span></span> · ${escapeHtml(severity)} (${escapeHtml(severity)}) · ${escapeHtml(finding.filePath)}:${finding.line}</header><p>${escapeHtml(message)}</p><details><summary>${escapeHtml(t.remediation)}</summary><p>${escapeHtml(remediation)}</p></details></article>`;
   });
   const ruleCounts = countBy(data.map((finding) => finding.ruleId));
   const fileCounts = countBy(data.map((finding) => finding.filePath));
   const classificationCounts = countBy(
     data.map((finding) => finding.classification),
   );
-  const navigation = `<nav><h2>${escapeHtml(t.navigation)}</h2>${ruleCounts.map(([rule, count]) => `<button type="button" data-filter-kind="rule" data-filter-value="${escapeHtml(rule)}">${escapeHtml(rule)} <b>${count}</b></button>`).join('')}<h2>${escapeHtml(t.classifications)}</h2>${classificationCounts.map(([classification, count]) => `<button type="button" data-filter-kind="classification" data-filter-value="${escapeHtml(classification)}">${escapeHtml(classificationLabels[locale][classification as keyof typeof classificationLabels.en] ?? classification)} <b>${count}</b></button>`).join('')}<h2>${escapeHtml(t.files)}</h2>${fileCounts.map(([file, count]) => `<button type="button" data-filter-kind="file" data-filter-value="${escapeHtml(file)}">${escapeHtml(file.split(/[\\/]/).pop() ?? file)} <b>${count}</b></button>`).join('')}</nav>`;
+  const navigation = `<nav><h2>${escapeHtml(t.navigation)}</h2>${ruleCounts
+    .map(([rule, count]) => {
+      const description =
+        ruleDescriptions[rule as keyof typeof ruleDescriptions]?.[locale];
+      return `<button type="button" class="rule-navigation-item" data-filter-kind="rule" data-filter-value="${escapeHtml(rule)}"><span>${escapeHtml(rule)} <b>${count}</b></span>${description ? `<small class="rule-navigation-description">${escapeHtml(description)}</small>` : ''}</button>`;
+    })
+    .join(
+      '',
+    )}<h2>${escapeHtml(t.classifications)}</h2>${classificationCounts.map(([classification, count]) => `<button type="button" data-filter-kind="classification" data-filter-value="${escapeHtml(classification)}">${escapeHtml(classificationLabels[locale][classification as keyof typeof classificationLabels.en] ?? classification)} <b>${count}</b></button>`).join('')}<h2>${escapeHtml(t.files)}</h2>${fileCounts.map(([file, count]) => `<button type="button" data-filter-kind="file" data-filter-value="${escapeHtml(file)}">${escapeHtml(file.split(/[\\/]/).pop() ?? file)} <b>${count}</b></button>`).join('')}</nav>`;
   const groupedCards = fileCounts
-    .map(
-      ([file, count]) =>
-        `<section class="finding-group" data-group-file="${escapeHtml(file)}"><h2>${escapeHtml(file)} <b>${count}</b></h2>${data.map((finding, index) => (finding.filePath === file ? cardHtml[index] : '')).join('')}</section>`,
-    )
+    .map(([file, count]) => {
+      const fileName = file.split(/[\\/]/).pop() ?? file;
+      return `<section class="finding-group" data-group-file="${escapeHtml(file)}"><h2 class="finding-group-title">${escapeHtml(fileName)} <b>${count}</b></h2><p class="finding-group-path">${escapeHtml(file)}</p>${data.map((finding, index) => (finding.filePath === file ? cardHtml[index] : '')).join('')}</section>`;
+    })
     .join('');
-  return `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t.title}</title><style>:root{color-scheme:dark;--bg:#111827;--panel:#1f2937;--ink:#f3f4f6;--fake:#fb7185;--weak:#fbbf24}body{margin:0;background:var(--bg);color:var(--ink);font:16px ui-monospace,monospace}main{max-width:1240px;margin:auto;padding:32px}.report-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start}.report-navigation{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}.report-content{min-width:0}h1{font-family:Georgia,serif}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.card,.finding,fieldset,.report-navigation,.finding-group{background:var(--panel);padding:14px;border-radius:8px}.report-navigation h2{font-size:1rem;margin:8px 0}.report-navigation button{display:block;width:100%;text-align:left}.finding-group{margin:16px 0}.finding{margin:12px 0;border-left:4px solid var(--weak)}.finding[data-classification="FAKE"]{border-color:var(--fake)}input,select,button{padding:8px;margin:4px;background:#111827;color:inherit;border:1px solid #64748b;border-radius:4px}code{color:#93c5fd;cursor:help;text-decoration:underline dotted}.hidden{display:none}@media (max-width: 720px){main{padding:16px}.report-layout{display:flex;flex-direction:column}.report-navigation{position:static;width:auto;max-height:none;order:0}.report-content{width:100%}}
+  return `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t.title}</title><style>:root{color-scheme:dark;--bg:#111827;--panel:#1f2937;--ink:#f3f4f6;--muted:#cbd5e1;--fake:#fb7185;--weak:#fbbf24}body{margin:0;background:var(--bg);color:var(--ink);font:16px ui-sans-serif,system-ui,sans-serif}main{max-width:1480px;margin:auto;padding:32px}.report-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:24px;align-items:start}.report-navigation{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}.report-content{min-width:0}h1{font-family:Charter,'Iowan Old Style',Georgia,serif;letter-spacing:-.02em}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card,.finding,fieldset,.report-navigation,.finding-group{background:var(--panel);padding:14px;border-radius:8px}.card b{font-size:1.25rem}.report-navigation h2{font-size:1rem;margin:8px 0}.report-navigation button{display:block;width:100%;text-align:left}.rule-navigation-description{display:block;margin-top:4px;color:var(--muted);font-size:.75rem;line-height:1.35}.finding-group{margin:16px 0}.finding-group-title{margin:0;font-size:1.15rem}.finding-group-path{margin:4px 0 12px;color:var(--muted);font:13px ui-monospace,monospace;overflow-wrap:anywhere}.finding{margin:12px 0;border-left:4px solid var(--weak);line-height:1.45}.finding[data-classification="FAKE"]{border-color:var(--fake)}input,select,button{padding:8px;margin:4px;background:#111827;color:inherit;border:1px solid #64748b;border-radius:4px}.rule-id{position:relative;display:inline-block}.rule-id code{color:#93c5fd;cursor:help;text-decoration:underline dotted}.rule-tooltip{position:absolute;z-index:1;top:calc(100% + 6px);left:0;width:max-content;max-width:min(360px,calc(100vw - 48px));padding:8px;border:1px solid #93c5fd;border-radius:4px;background:#0f172a;color:var(--ink);font:14px ui-sans-serif,sans-serif;line-height:1.4;opacity:0;pointer-events:none;visibility:hidden}.rule-id:hover .rule-tooltip,.rule-id:focus .rule-tooltip{opacity:1;visibility:visible}.hidden{display:none}@media (max-width: 720px){main{padding:16px}.report-layout{display:flex;flex-direction:column}.report-navigation{position:static;width:auto;max-height:none;order:0}.report-content{width:100%}}
 </style><main><h1>${t.title}</h1><div class="report-layout"><aside class="report-navigation" aria-label="${escapeHtml(t.navigationLabel)}">${navigation}</aside><section class="report-content"><p>${t.sourceOnly} ${t.noStrong}</p><section class="grid"><div class="card">${t.auditItems}<br><b>${result.summary.total}</b></div><div class="card">${t.extractedTests}<br><b>${result.tests.length}</b></div><div class="card">${t.fake}<br><b>${result.summary.fake}</b></div><div class="card">${t.weak}<br><b>${result.summary.weak}</b></div><div class="card">${t.unassessed}<br><b>${result.summary.unassessed}</b></div><div class="card">${t.ftr}<br><b>${result.summary.fakeTestRatio.toFixed(2)}%</b></div><div class="card">${t.trust}<br><b>${result.summary.trustScore}</b></div></section><fieldset><legend>${t.filter}</legend><select id="classification"><option value="">${t.findings}</option><option value="FAKE">${t.fake}</option><option value="WEAK">${t.weak}</option><option value="INVALID">${t.invalid}</option></select><label for="rule">${t.rule}</label><input id="rule" aria-label="${t.rule}" placeholder="${t.rule}"><label for="file">${t.file}</label><input id="file" aria-label="${t.file}" placeholder="${t.file}"><button id="reset">${t.reset}</button></fieldset><p id="empty" class="${data.length ? 'hidden' : ''}">${t.noResults}</p><section id="findings">${groupedCards}</section></section></div></main><script>const q=s=>document.querySelector(s),all=[...document.querySelectorAll('.finding')];function f(){const c=q('#classification').value,r=q('#rule').value.toLowerCase(),p=q('#file').value.toLowerCase();let n=0;all.forEach(x=>{const ok=(!c||x.dataset.classification===c)&&(!r||x.dataset.rule.toLowerCase().includes(r))&&(!p||x.dataset.file.toLowerCase().includes(p));x.classList.toggle('hidden',!ok);if(ok)n++});document.querySelectorAll('.finding-group').forEach(g=>g.classList.toggle('hidden',![...g.querySelectorAll('.finding')].some(x=>!x.classList.contains('hidden'))));q('#empty').textContent=all.length===0?'${t.noFindings}':'${t.noResults}';q('#empty').classList.toggle('hidden',n>0)}['#rule','#file'].forEach(x=>q(x).addEventListener('input',f));['input','change'].forEach(e=>q('#classification').addEventListener(e,f));q('#reset').onclick=()=>{q('#classification').value=q('#rule').value=q('#file').value='';f()};document.querySelectorAll('[data-filter-kind]').forEach(x=>x.onclick=()=>{if(x.dataset.filterKind==='rule'){q('#file').value='';q('#rule').value=x.dataset.filterValue||''}else if(x.dataset.filterKind==='file'){q('#rule').value='';q('#file').value=x.dataset.filterValue||''}else{q('#classification').value=x.dataset.filterValue||'';q('#rule').value='';q('#file').value='';q('#rule').value='';q('#file').value=''};f()});f();</script></html>`;
 }
 

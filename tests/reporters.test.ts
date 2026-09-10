@@ -159,6 +159,75 @@ describe('reporters', () => {
     );
   });
 
+  it('localizes the Chinese HTML finding message and remediation for E2E rules', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E003',
+            message:
+              'E2E003 verifies only element visibility. Static analysis cannot determine whether visible UI proves the user journey outcome.',
+            remediation:
+              'Add assertions for the user-visible value, state change, or completed outcome. Static analysis cannot judge every meaningful journey outcome.',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain(
+      'E2E003 仅验证元素可见性。静态分析无法判断可见 UI 是否足以证明用户旅程完成。',
+    );
+    expect(output).toContain(
+      '补充对用户可见值、状态变化或已完成结果的断言。静态分析无法判断所有有意义的用户旅程结果。',
+    );
+    expect(output).not.toContain('E2E003 verifies only element visibility.');
+  });
+
+  it('renders a visible-on-hover tooltip instead of relying only on a native title', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E001',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain('class="rule-id" tabindex="0"');
+    expect(output).toContain('class="rule-tooltip" role="tooltip"');
+    expect(output).toContain(
+      'E2E001：Playwright 测试回调中没有可识别的 expect 断言。',
+    );
+    expect(output).toContain('.rule-id:hover .rule-tooltip');
+    expect(output).toContain('.rule-id:focus .rule-tooltip');
+  });
+
+  it('shows a rule explanation in the rule navigation entry', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E001',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain('class="rule-navigation-item"');
+    expect(output).toContain('class="rule-navigation-description"');
+    expect(output).toContain('Playwright 测试回调中没有可识别的 expect 断言。');
+  });
+
   it('renders localized rule and file navigation counts', () => {
     const output = renderHtml(
       {
@@ -184,7 +253,7 @@ describe('reporters', () => {
     expect(output).toContain('a.e2e.ts <b>2</b>');
   });
 
-  it('groups findings by file and discloses remediation details', () => {
+  it('groups findings under a readable file name while retaining the full path', () => {
     const output = renderHtml(
       {
         ...result,
@@ -196,7 +265,12 @@ describe('reporters', () => {
       'zh-CN',
     );
     expect(output).toContain('<section class="finding-group"');
-    expect(output).toContain('/repo/example.test.ts <b>2</b>');
+    expect(output).toContain(
+      '<h2 class="finding-group-title">example.test.ts <b>2</b></h2>',
+    );
+    expect(output).toContain(
+      '<p class="finding-group-path">/repo/example.test.ts</p>',
+    );
     expect(output).toContain('<details><summary>修复建议</summary>');
     expect(output).not.toContain(result.tests[0]!.source);
   });
