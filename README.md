@@ -52,7 +52,8 @@ node dist/cli.js review ./tests --format html --output audit.html
 node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
 ```
 
-`--output` works with text, json, and html. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
+`--output` works with text, json, and html. HTML writes to `audit.html` by default, or `audit-zh.html` with `--locale zh-CN`; text and JSON keep writing to stdout. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
+When HTML writes a report, stdout stays clean; add `--print-output-path` to print its absolute path to stderr for shell workflows.
 
 `--policy` is advisory: it reports disabled/active selection counts only and does not change findings, classifications, summary values, FTR, Trust Score, or exit semantics. Invalid policy input exits `2`; it is not a default CI gate or a release decision. `ata decision` is also advisory: a valid decision exits `0`, while invalid input exits `2`.
 

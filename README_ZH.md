@@ -52,7 +52,8 @@ node dist/cli.js review ./tests --format html --output audit.html
 node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
 ```
 
-`--output` 支持 text、json、html。`--locale zh-CN` 本地化 text 与 HTML；不输入时为 `en`。JSON 保持稳定 schema 与英文消息。
+`--output` 支持 text、json、html。HTML 未指定 `--output` 时默认写入当前目录的 `audit.html`，使用 `--locale zh-CN` 时默认写入 `audit-zh.html`；text 与 JSON 继续写入标准输出。`--locale zh-CN` 本地化 text 与 HTML；不输入时为 `en`。JSON 保持稳定 schema 与英文消息。
+HTML 写入报告时标准输出保持干净；如需在命令行获取绝对路径，可追加 `--print-output-path`，路径会输出到标准错误。
 
 `--policy` 只是 advisory：它只报告禁用/活跃选择计数，不改变发现项、分类、汇总、FTR、Trust Score 或退出语义。无效策略输入返回 `2`；它不是默认 CI 门禁，也不作发布决定。`ata decision` 同样只是建议性：有效决策返回 `0`，无效输入返回 `2`。
 

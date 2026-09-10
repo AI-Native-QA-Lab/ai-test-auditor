@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runCli } from '../src/cli';
+import { defaultReportOutputPath, runCli } from '../src/cli';
 
 const temporaryRoots: string[] = [];
 
@@ -46,6 +46,18 @@ async function invoke(args: string[]): Promise<{
 }
 
 describe('ata review', () => {
+  it('uses locale-specific default HTML report paths without changing text or JSON output', () => {
+    expect(defaultReportOutputPath('html', 'en', '/reports')).toBe(
+      '/reports/audit.html',
+    );
+    expect(defaultReportOutputPath('html', 'zh-CN', '/reports')).toBe(
+      '/reports/audit-zh.html',
+    );
+    expect(
+      defaultReportOutputPath('json', 'zh-CN', '/reports'),
+    ).toBeUndefined();
+  });
+
   it('applies an explicit FAKE-only policy gate with 0, 1, and 2 exits', async () => {
     const root = await fixture('');
     const policyPath = join(root, 'gate-policy.json');
@@ -475,6 +487,27 @@ describe('ata review', () => {
         inferences: [{ summary: 'Missing domain context.' }],
       },
     });
+  });
+
+  it('prints the absolute output path when requested without polluting report stdout', async () => {
+    const root = await fixture(
+      "import { expect, test } from 'vitest'; test('ok', () => { expect(value).toBe('ok'); });",
+    );
+    const output = join(root, 'audit.html');
+
+    const invocation = await invoke([
+      'review',
+      root,
+      '--format',
+      'html',
+      '--output',
+      output,
+      '--print-output-path',
+    ]);
+
+    expect(invocation.code).toBe(0);
+    expect(invocation.stdout).toBe('');
+    expect(invocation.stderr).toContain(`Report written to: ${output}`);
   });
 
   it.each(['{', ''])(

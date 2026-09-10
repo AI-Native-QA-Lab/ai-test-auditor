@@ -3,7 +3,7 @@
 import { pathToFileURL } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, basename, join } from 'node:path';
+import { dirname, basename, join, resolve } from 'node:path';
 import { Command, CommanderError, Option } from 'commander';
 import { auditPath, InputPathError, type ReviewType } from './core/audit.js';
 import { ChangedFilesError } from './core/changed-files.js';
@@ -36,6 +36,15 @@ const defaultIo: CliIo = {
 };
 
 type OutputFormat = 'text' | 'json' | 'html';
+
+export function defaultReportOutputPath(
+  format: OutputFormat,
+  locale: ReportLocale,
+  cwd: string = process.cwd(),
+): string | undefined {
+  if (format !== 'html') return undefined;
+  return join(cwd, locale === 'zh-CN' ? 'audit-zh.html' : 'audit.html');
+}
 
 export async function runCli(
   args: readonly string[],
@@ -80,6 +89,10 @@ export async function runCli(
     )
     .option('--locale <locale>', 'human-readable report locale', 'en')
     .option('--output <path>', 'write the report to a file')
+    .option(
+      '--print-output-path',
+      'print the absolute report path after writing the report',
+    )
     .addHelpText(
       'after',
       '\nExit codes:\n  0  No FAKE findings\n  1  One or more FAKE findings\n  2  Invalid command or input\n',
@@ -92,6 +105,7 @@ export async function runCli(
           readonly format: OutputFormat;
           readonly locale: ReportLocale;
           readonly output?: string;
+          readonly printOutputPath?: boolean;
           readonly config?: string;
           readonly changedSince?: string;
           readonly semanticReport?: string;
@@ -122,8 +136,14 @@ export async function runCli(
             : options.format === 'html'
               ? renderHtml(rendered, options.locale)
               : renderText(rendered);
-        if (options.output) await writeReport(options.output, text);
-        else io.stdout(text);
+        const outputPath =
+          options.output ??
+          defaultReportOutputPath(options.format, options.locale);
+        if (outputPath) {
+          await writeReport(outputPath, text);
+          if (options.printOutputPath)
+            io.stderr(`Report written to: ${resolve(outputPath)}\n`);
+        } else io.stdout(text);
         resultCode =
           result.summary.invalid > 0 ? 2 : result.summary.fake > 0 ? 1 : 0;
       },
