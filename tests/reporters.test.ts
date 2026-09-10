@@ -133,6 +133,38 @@ describe('reporters', () => {
     expect(output).not.toContain(result.tests[0]?.source ?? '');
   });
 
+  it('separates static callback and finding counts by framework in Chinese HTML', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        tests: [
+          ...result.tests,
+          {
+            ...result.tests[0]!,
+            filePath: '/repo/journey.spec.ts',
+            framework: 'playwright',
+            type: 'e2e',
+          },
+        ],
+        findings: [
+          {
+            ...result.findings[0]!,
+            filePath: '/repo/journey.spec.ts',
+            ruleId: 'E2E003',
+            classification: 'WEAK',
+            severity: 'WARNING',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain('按框架静态口径');
+    expect(output).toContain('Vitest · 静态回调 1 · 发现项 0');
+    expect(output).toContain('Playwright · 静态回调 1 · 发现项 1');
+    expect(output).toContain('运行器注册实例未执行、未统计。');
+  });
+
   it('provides Chinese hover descriptions for every E2E00x rule', () => {
     const output = renderHtml(
       {
