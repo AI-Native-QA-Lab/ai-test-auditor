@@ -105,12 +105,141 @@ describe('reporters', () => {
   });
 
   it('renders a standalone filterable HTML report without test source', () => {
-    const output = renderHtml(result, 'zh-CN');
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E001',
+            severity: 'CRITICAL',
+            classification: 'FAKE',
+          },
+        ],
+      },
+      'zh-CN',
+    );
     expect(output).toContain('<!doctype html>');
+    expect(output).toContain('静态审计项');
+    expect(output).toContain('已识别测试回调');
     expect(output).toContain('筛选发现项');
     expect(output).toContain('data-classification="FAKE"');
+    expect(output).toContain('虚假测试');
+    expect(output).toContain('严重');
+    expect(output).toContain(
+      'title="E2E001：Playwright 测试回调中没有可识别的 expect 断言。"',
+    );
     expect(output).toContain('example.test.ts');
     expect(output).not.toContain(result.tests[0]?.source ?? '');
+  });
+
+  it('provides Chinese hover descriptions for every E2E00x rule', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: ['E2E001', 'E2E002', 'E2E003', 'E2E004'].map((ruleId) => ({
+          ...result.findings[0]!,
+          ruleId,
+        })),
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain(
+      'title="E2E001：Playwright 测试回调中没有可识别的 expect 断言。"',
+    );
+    expect(output).toContain(
+      'title="E2E002：所有可识别的 Playwright 断言只检查页面 URL。"',
+    );
+    expect(output).toContain(
+      'title="E2E003：所有直接 Playwright 断言只检查元素可见性。"',
+    );
+    expect(output).toContain(
+      'title="E2E004：page.waitForTimeout 使用了数字字面量。"',
+    );
+  });
+
+  it('renders localized rule and file navigation counts', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E001',
+            filePath: '/repo/a.e2e.ts',
+          },
+          {
+            ...result.findings[0]!,
+            ruleId: 'E2E004',
+            filePath: '/repo/a.e2e.ts',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain('按规则浏览');
+    expect(output).toContain('E2E001 <b>1</b>');
+    expect(output).toContain('a.e2e.ts <b>2</b>');
+  });
+
+  it('groups findings by file and discloses remediation details', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          { ...result.findings[0]!, line: 4 },
+          { ...result.findings[0]!, line: 9 },
+        ],
+      },
+      'zh-CN',
+    );
+    expect(output).toContain('<section class="finding-group"');
+    expect(output).toContain('/repo/example.test.ts <b>2</b>');
+    expect(output).toContain('<details><summary>修复建议</summary>');
+    expect(output).not.toContain(result.tests[0]!.source);
+  });
+
+  it('puts navigation semantics on the aside and shortens Windows file paths', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [
+          { ...result.findings[0]!, filePath: 'C:\\\\repo\\\\a.e2e.ts' },
+        ],
+      },
+      'en',
+    );
+    expect(output).toContain(
+      '<aside class="report-navigation" aria-label="Audit navigation">',
+    );
+    expect(output).toContain('>a.e2e.ts <b>1</b>');
+    expect(output).toContain('data-filter-value="C:\\\\repo\\\\a.e2e.ts"');
+  });
+
+  it('uses a neutral navigation label and clears the opposite text filter', () => {
+    const output = renderHtml(result, 'en');
+    expect(output).toContain(
+      '<aside class="report-navigation" aria-label="Audit navigation">',
+    );
+    expect(output).toContain(
+      "q('#rule').value='';q('#file').value=x.dataset.filterValue||''",
+    );
+    expect(output).toContain(
+      "q('#file').value='';q('#rule').value=x.dataset.filterValue||''",
+    );
+    expect(output).toContain(
+      "['input','change'].forEach(e=>q('#classification').addEventListener(e,f))",
+    );
+  });
+
+  it('renders an offline responsive audit workbench', () => {
+    const output = renderHtml(result, 'en');
+    expect(output).toContain('class="report-layout"');
+    expect(output).toContain('class="report-navigation"');
+    expect(output).toContain('@media (max-width: 720px)');
+    expect(output).not.toMatch(/https?:\/\//);
   });
 
   it('renders mutation evidence as advisory only', () => {
