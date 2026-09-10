@@ -1,5 +1,7 @@
 .worktrees/
 .superpowers/
+.codex-backups/
+docs/superpowers/
 node_modules/
 dist/
 coverage/
