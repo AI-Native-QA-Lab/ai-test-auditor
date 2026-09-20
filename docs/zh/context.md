@@ -2,9 +2,9 @@
 
 # 项目上下文
 
-## 目的与 v1.2.0 基线
+## 目的与 v1.2.1 基线
 
-AI Test Auditor 是用于识别无效 JavaScript 与 TypeScript 测试的确定性、纯源码静态分析器。v1.2.0 是当前稳定发布版本：显式门禁只阻断确定性的 `FAKE`，未标记测试绝不等于强测试。
+AI Test Auditor 是用于识别无效 JavaScript 与 TypeScript 测试的确定性、纯源码静态分析器。v1.2.1 是当前稳定发布版本：它包含 advisory workflow 的 CI 修复，同时显式门禁仍只阻断确定性的 `FAKE`，未标记测试绝不等于强测试。
 
 ## 当前能力地图
 

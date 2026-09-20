@@ -94,7 +94,7 @@ v1.2 benchmark manifest 覆盖 10 条 Unit 规则、10 条 API 规则和 10 条 
 
 ## 下一步
 
-v1.2.0 是当前稳定发布版本。它完成了 v1.2 静态审计增强；v1.5 及之后的方向尚未交付，仅在[迭代计划](./docs/zh/roadmap.md)中说明。
+v1.2.1 是当前稳定发布版本。它包含 advisory workflow 的 CI 修复，同时保留 v1.2 静态审计增强；v1.5 及之后的方向尚未交付，仅在[迭代计划](./docs/zh/roadmap.md)中说明。
 
 ## 参与贡献
 
