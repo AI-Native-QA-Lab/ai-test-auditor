@@ -73,3 +73,25 @@ HTML 未指定 `--output` 时会写入当前目录的默认文件：英文为 `a
 ## 2026-09-10 按框架静态口径
 
 HTML 报告新增 Vitest、Playwright 与 Jest 的框架分组，分别展示 AST 提取的静态测试回调数及关联发现项数。报告明确运行器注册实例未执行、未统计：该分组不能替代 Playwright/Vitest 的 `--list` 或实际执行结果。发现项仍按源文件关联，无法可靠归属到已提取回调的异常诊断不被虚构分配到某个框架；静态发现、FTR、Trust Score 和退出码保持不变。
+
+## 2026-09-10 后续路线图与 Project 治理
+
+`v1.1.1` 已发布不代表旧版 v1.1 计划完成。因版本号已使用，未完成的稳定性、公开契约、配置与报告目标统一转入 `v1.2`，并与规则增强、证据质量和 benchmark 工作一起排期。当前规则基线为 Unit 6 条、API 2 条、E2E 4 条和 Parser 1 条；v1.2 可以增强这些审计，但每条新增规则均须保留确定性/静态边界并具有正反例、benchmark 与双语文档。
+
+GitHub Project 是路线图的执行视图：卡片记录版本、边界、验收证据、风险和状态；它不替代路线图，也不得把设计卡或未验证工作表述为已交付。获得 `project` scope 后，已在 `naodeng` 下创建 [AI Test Auditor Roadmap](https://github.com/users/naodeng/projects/3)：包含 v1.2 的 7 张执行卡，以及 v1.5、v2.0–v2.7、v3.0、v3.x 的 9 张 Epic 卡。所有卡片均已写入路线图版本、工作类型、证据状态、风险与路线图状态。
+
+## 2026-09-20 v1.2 规则扩充与验证
+
+材料决策：v1.2 保持确定性、纯源码边界，将 Unit、API、E2E 各扩充到 10 条稳定规则；新增规则只接受有边界的 AST 证据，依赖上下文的提示保持 `WEAK`，未命中的测试保持 `UNASSESSED`。增加 version `1` benchmark manifest，用精确的 finding/classification 身份和明确的 `nonTriggers` 固定三类 fixture 契约；不执行 fixture 源码，也不引入运行时、网络、mutation 或模型证据。
+
+已观察的验证链：规则目录先以 RED 暴露缺失的 ID 与版本行为，再以 GREEN 通过；Unit、API、E2E 新规则分别完成正反例 RED/GREEN；benchmark manifest、配置兼容性、locale、reporter 无障碍状态和双语文档契约均完成聚焦 RED/GREEN。`npm run benchmark` 已实际构建并通过 3 个 v1.2 fixture（Unit/API/E2E 各 1 个），每个 fixture 均比对精确 finding/classification 身份。
+
+最终 fresh 门禁：`npm test` 通过 23 个测试文件、239 个测试；`npm run lint`、`npm run typecheck`、`npm run format:check`、`npm run build`、`npm run benchmark` 和 `git diff --check` 均通过。`node dist/cli.js review benchmarks --format json` 按既有约定以退出码 `1` 返回确定性 FAKE/WEAK 发现项，并非命令错误。
+
+已知限制：本迭代证据仍是静态源码和 fixture 一致性证据，不代表真实运行时质量、覆盖率、mutation、precision、recall、业务验收、部署或发布完成。
+
+## 2026-09-20 v1.2 review follow-up
+
+审查发现并修复四项边界问题：空 benchmark manifest 不再以 `0/0 passed` 假通过；配置中的显式 `null` 不再被当作缺省 version/include/exclude；package manifest 读取或解析失败会转换为受控的输入错误和退出码 `2`；中英文 Context 标题与 v1.1.1 基线保持一致。
+
+本次修复先为四类行为补充回归测试并观察到聚焦 RED（4 个新增失败断言），再做最小实现；聚焦 GREEN 为 3 个测试文件、55 个测试通过。修复后的 fresh 门禁为 23 个测试文件、239 个测试通过，lint、类型检查、格式检查、构建、benchmark 和 diff check 均通过；benchmark 为 3/3 fixture，通过 `review benchmarks` 返回的退出码 `1` 仍仅表示样例包含确定性 FAKE/WEAK 发现项。

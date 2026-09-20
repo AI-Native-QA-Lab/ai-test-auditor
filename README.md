@@ -50,10 +50,17 @@ node dist/cli.js gate ./gate-policy.json ./audit-envelope.json
 # Generate a local, filterable report (English is the default).
 node dist/cli.js review ./tests --format html --output audit.html
 node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
+
+# Run the versioned, source-only v1.2 benchmark corpus.
+npm run benchmark
 ```
 
 `--output` works with text, json, and html. HTML writes to `audit.html` by default, or `audit-zh.html` with `--locale zh-CN`; text and JSON keep writing to stdout. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
 When HTML writes a report, stdout stays clean; add `--print-output-path` to print its absolute path to stderr for shell workflows.
+
+The v1.2 benchmark manifest covers 10 Unit rules, 10 API rules, and 10 E2E rules. `ata benchmark [manifest]` reads fixture source through the static audit pipeline, compares exact rule/classification identities, and reports fixture conformance; it never imports or executes fixture code. Malformed benchmark input exits `2`, while a valid manifest with mismatches exits `1`.
+
+Review configuration accepts legacy JSON without a version and normalizes it to version `1`; unknown fields, empty include/exclude patterns, and unsupported semantic providers are invalid input. `--locale en` and `--locale zh-CN` select text/HTML language without changing the JSON schema.
 
 `--policy` is advisory: it reports disabled/active selection counts only and does not change findings, classifications, summary values, FTR, Trust Score, or exit semantics. Invalid policy input exits `2`; it is not a default CI gate or a release decision. `ata decision` is also advisory: a valid decision exits `0`, while invalid input exits `2`.
 
@@ -87,7 +94,7 @@ Read the [rule catalog](./docs/rules.md) before treating output as a release dec
 
 ## Next
 
-v1.0 is the current stable baseline. v2.0 is not delivered; its optional runtime, mutation, and AI/LLM directions are described only in the [Roadmap](./docs/roadmap.md).
+v1.1.1 is the current stable release. v1.2 continues unfinished static-platform work and enhances existing audits and reports; v1.5+ directions are not delivered and are described only in the [Roadmap](./docs/roadmap.md).
 
 ## Contributing
 

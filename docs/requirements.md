@@ -33,6 +33,9 @@ Provide a local CLI that identifies a deliberately small set of high-confidence,
 - A supplied, versioned semantic report may be validated and displayed as offline advisory evidence; no model is executed and it does not change static classifications or exit semantics.
 - English-first public documentation, Chinese translation, benchmark fixtures, CI, and standalone Skill assets.
 - The GitHub Actions reference workflow accepts a PR base SHA or manual `base-ref`, selects changed supported test files, and publishes advisory output without becoming a gate.
+- `ata benchmark [manifest] --format text|json` validates a version `1` source-only benchmark manifest. It compares exact expected rule/classification identities and explicit non-triggers; it does not import or execute fixture source. `npm run benchmark` runs the repository corpus.
+- `--locale <en|zh-CN>` localizes text and HTML labels and catalog copy. JSON remains schema-compatible and keeps the raw finding fields.
+- Audit config accepts legacy JSON without a version and normalizes it to version `1`; unknown fields, empty include/exclude patterns, and unsupported semantic provider values are invalid input.
 
 ## Out of scope
 

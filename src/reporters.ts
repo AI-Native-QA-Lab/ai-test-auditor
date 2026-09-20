@@ -1,4 +1,5 @@
-import type { AuditResult } from './core/types.js';
+import type { AuditResult, Finding } from './core/types.js';
+import { getRuleDefinition } from './rules/catalog.js';
 
 export type ReportLocale = 'en' | 'zh-CN';
 
@@ -7,7 +8,7 @@ const labels = {
     title: 'AI Test Auditor',
     findings: 'Findings',
     auditItems: 'Audit items',
-    extractedTests: 'Extracted test callbacks',
+    extractedTests: 'Extracted test cases',
     fake: 'Fake tests (FAKE)',
     weak: 'Review hints (WEAK)',
     unassessed: 'Unassessed (UNASSESSED)',
@@ -139,7 +140,37 @@ export function renderJson(result: AuditResult): string {
   return `${JSON.stringify(result, null, 2)}\n`;
 }
 
-export function renderText(result: AuditResult): string {
+function localizedFindingCopy(
+  finding: Pick<Finding, 'ruleId' | 'message' | 'remediation'>,
+  locale: ReportLocale,
+): { readonly message: string; readonly remediation: string } {
+  if (locale === 'en') {
+    return { message: finding.message, remediation: finding.remediation };
+  }
+  const legacyCopy =
+    chineseFindingCopy[finding.ruleId as keyof typeof chineseFindingCopy];
+  if (legacyCopy) return legacyCopy;
+  const definition = getRuleDefinition(finding.ruleId);
+  if (!definition) {
+    return { message: finding.message, remediation: finding.remediation };
+  }
+  return {
+    message:
+      finding.ruleId +
+      '：' +
+      definition.description.zh +
+      ' 静态分析无法判断该有限证据是否足够。',
+    remediation:
+      definition.evidenceBoundary.zh + ' 请结合业务语义进行人工复核。',
+  };
+}
+
+export function renderText(
+  result: AuditResult,
+  locale: ReportLocale = 'en',
+): string {
+  const t = labels[locale];
+  const isChinese = locale === 'zh-CN';
   const { summary } = result;
   const critical = result.findings.filter(
     (finding) => finding.severity === 'CRITICAL',
@@ -150,41 +181,147 @@ export function renderText(result: AuditResult): string {
   const lines = [
     'AI Test Auditor',
     '',
-    `Audit items: ${summary.total} total, ${summary.assessed} assessed`,
-    `Extracted test cases: ${result.tests.length}`,
-    `Classifications: FAKE ${summary.fake} | WEAK ${summary.weak} | INVALID ${summary.invalid} | UNASSESSED ${summary.unassessed}`,
-    `Fake Test Ratio: ${summary.fakeTestRatio.toFixed(2)}% (${summary.fake} / ${summary.assessed} assessed)`,
-    `Trust Score: ${summary.trustScore}/100 (100 - ${critical} critical x 25 - ${warning} warning x 10)`,
+    isChinese
+      ? t.auditItems +
+        '：' +
+        summary.total +
+        ' 总计，' +
+        summary.assessed +
+        ' 已评估'
+      : 'Audit items: ' +
+        summary.total +
+        ' total, ' +
+        summary.assessed +
+        ' assessed',
+    isChinese
+      ? t.extractedTests + '：' + result.tests.length
+      : 'Extracted test cases: ' + result.tests.length,
+    isChinese
+      ? '分类：' +
+        classificationLabels[locale].FAKE +
+        ' ' +
+        summary.fake +
+        ' | ' +
+        classificationLabels[locale].WEAK +
+        ' ' +
+        summary.weak +
+        ' | ' +
+        classificationLabels[locale].INVALID +
+        ' ' +
+        summary.invalid +
+        ' | ' +
+        classificationLabels[locale].UNASSESSED +
+        ' ' +
+        summary.unassessed
+      : 'Classifications: FAKE ' +
+        summary.fake +
+        ' | WEAK ' +
+        summary.weak +
+        ' | INVALID ' +
+        summary.invalid +
+        ' | UNASSESSED ' +
+        summary.unassessed,
+    isChinese
+      ? t.ftr +
+        '：' +
+        summary.fakeTestRatio.toFixed(2) +
+        '%（' +
+        summary.fake +
+        ' / ' +
+        summary.assessed +
+        ' 已评估）'
+      : 'Fake Test Ratio: ' +
+        summary.fakeTestRatio.toFixed(2) +
+        '% (' +
+        summary.fake +
+        ' / ' +
+        summary.assessed +
+        ' assessed)',
+    isChinese
+      ? t.trust +
+        '：' +
+        summary.trustScore +
+        '/100（100 - ' +
+        critical +
+        ' 严重 x 25 - ' +
+        warning +
+        ' 警告 x 10）'
+      : 'Trust Score: ' +
+        summary.trustScore +
+        '/100 (100 - ' +
+        critical +
+        ' critical x 25 - ' +
+        warning +
+        ' warning x 10)',
     '',
   ];
   if (result.selection) {
     lines.push(
       '',
-      `File selection: ${result.selection.mode} (${result.selection.files.length} changed candidates)`,
+      isChinese
+        ? '文件筛选：' +
+            result.selection.mode +
+            '（' +
+            result.selection.files.length +
+            ' 个变更候选）'
+        : 'File selection: ' +
+            result.selection.mode +
+            ' (' +
+            result.selection.files.length +
+            ' changed candidates)',
     );
   }
 
   if (result.findings.length === 0) {
     lines.push(
-      'No deterministic findings. Unflagged tests remain UNASSESSED; this is not evidence that they are STRONG.',
+      isChinese
+        ? t.noFindings + ' ' + t.noStrong
+        : 'No deterministic findings. Unflagged tests remain UNASSESSED; this is not evidence that they are STRONG.',
     );
   } else {
-    lines.push('Findings');
+    lines.push(isChinese ? t.findings : 'Findings');
     for (const finding of result.findings) {
+      const copy = localizedFindingCopy(finding, locale);
+      const classification = isChinese
+        ? classificationLabels[locale][finding.classification]
+        : finding.classification;
+      const severity = isChinese
+        ? severityLabels[locale][finding.severity]
+        : finding.severity;
       lines.push(
         '',
-        `${finding.filePath}:${finding.line} [${finding.severity}] [${finding.classification}] ${finding.ruleId}`,
-        `  ${finding.message}`,
-        `  Remediation: ${finding.remediation}`,
+        finding.filePath +
+          ':' +
+          finding.line +
+          ' [' +
+          severity +
+          '] [' +
+          classification +
+          '] ' +
+          finding.ruleId,
+        '  ' + copy.message,
+        '  ' +
+          (isChinese ? '修复建议' : 'Remediation') +
+          ': ' +
+          copy.remediation,
       );
     }
   }
 
   if (result.diagnostics && result.diagnostics.length > 0) {
-    lines.push('', 'Parser diagnostics (source syntax only)');
+    lines.push(
+      '',
+      isChinese
+        ? 'Parser 诊断（仅源码语法）'
+        : 'Parser diagnostics (source syntax only)',
+    );
     for (const diagnostic of result.diagnostics) {
       lines.push(
-        `${diagnostic.filePath}:${diagnostic.line} [PARSER001] ${diagnostic.message}`,
+        diagnostic.filePath +
+          ':' +
+          diagnostic.line +
+          ' [PARSER001] ' +
+          diagnostic.message,
       );
     }
   }
@@ -192,11 +329,21 @@ export function renderText(result: AuditResult): string {
   if (result.semantic) {
     lines.push(
       '',
-      `Semantic inferences (${result.semantic.provider}; advisory only)`,
+      isChinese
+        ? '语义推断（' + result.semantic.provider + '；仅供参考）'
+        : 'Semantic inferences (' +
+            result.semantic.provider +
+            '; advisory only)',
     );
     for (const inference of result.semantic.inferences) {
       lines.push(
-        `${inference.filePath}:${inference.line} [${inference.confidence}] ${inference.summary}`,
+        inference.filePath +
+          ':' +
+          inference.line +
+          ' [' +
+          inference.confidence +
+          '] ' +
+          inference.summary,
       );
     }
   }
@@ -205,44 +352,70 @@ export function renderText(result: AuditResult): string {
     const { mutation } = result;
     lines.push(
       '',
-      'Mutation evidence (advisory only)',
-      `Engine: ${mutation.engine}`,
-      `Command: ${mutation.command}`,
-      `Score: ${mutation.result.score.toFixed(2)}% (${mutation.result.killed} killed / ${mutation.result.totalMutants} total; ${mutation.result.survived} survived)`,
-      `Threshold: ${mutation.meetsThreshold ? 'met' : 'below'} (${mutation.threshold.minimumScore.toFixed(2)}%)`,
-      `Threshold source: ${mutation.threshold.source}`,
+      isChinese ? '变异证据（仅供参考）' : 'Mutation evidence (advisory only)',
+      (isChinese ? '引擎' : 'Engine') + ': ' + mutation.engine,
+      (isChinese ? '命令' : 'Command') + ': ' + mutation.command,
+      (isChinese ? '分数' : 'Score') +
+        ': ' +
+        mutation.result.score.toFixed(2) +
+        '% (' +
+        mutation.result.killed +
+        ' killed / ' +
+        mutation.result.totalMutants +
+        ' total; ' +
+        mutation.result.survived +
+        ' survived)',
+      (isChinese ? '阈值' : 'Threshold') +
+        ': ' +
+        (mutation.meetsThreshold ? 'met' : 'below') +
+        ' (' +
+        mutation.threshold.minimumScore.toFixed(2) +
+        '%)',
+      (isChinese ? '阈值来源' : 'Threshold source') +
+        ': ' +
+        mutation.threshold.source,
     );
   }
 
   if (result.baseline) {
     lines.push(
       '',
-      'Baseline (advisory only)',
-      `ID: ${result.baseline.id}`,
-      `Historical findings: ${result.baseline.historicalFindingCount}`,
-      `New findings: ${result.baseline.newFindingCount}`,
+      isChinese ? '基线（仅供参考）' : 'Baseline (advisory only)',
+      'ID: ' + result.baseline.id,
+      (isChinese ? '历史发现项' : 'Historical findings') +
+        ': ' +
+        result.baseline.historicalFindingCount,
+      (isChinese ? '新增发现项' : 'New findings') +
+        ': ' +
+        result.baseline.newFindingCount,
     );
   }
 
   if (result.policy) {
     lines.push(
       '',
-      'Policy (advisory only)',
-      `ID: ${result.policy.id}`,
-      `Disabled findings: ${result.policy.disabledFindingCount}`,
-      `Active findings: ${result.policy.activeFindingCount}`,
+      isChinese ? '策略（仅供参考）' : 'Policy (advisory only)',
+      'ID: ' + result.policy.id,
+      (isChinese ? '已禁用发现项' : 'Disabled findings') +
+        ': ' +
+        result.policy.disabledFindingCount,
+      (isChinese ? '启用发现项' : 'Active findings') +
+        ': ' +
+        result.policy.activeFindingCount,
     );
   }
 
   lines.push(
     '',
-    'Static source analysis only: tests were not executed, and runtime behavior was not assessed.',
+    isChinese
+      ? '仅静态源码分析：未执行测试，也未评估运行时行为。'
+      : 'Static source analysis only: tests were not executed, and runtime behavior was not assessed.',
   );
 
   return `${lines.join('\n')}\n`;
 }
 
-export function renderHtml(
+function renderHtmlBase(
   result: AuditResult,
   locale: ReportLocale = 'en',
 ): string {
@@ -269,19 +442,13 @@ export function renderHtml(
   const cardHtml = data.map((finding, index) => {
     const classification = classificationLabels[locale][finding.classification];
     const severity = severityLabels[locale][finding.severity];
-    const ruleDescription =
-      ruleDescriptions[finding.ruleId as keyof typeof ruleDescriptions]?.[
-        locale
-      ];
+    const ruleDescription = getRuleDescription(finding.ruleId, locale);
     const ruleTitle = ruleDescription
       ? `${finding.ruleId}${locale === 'zh-CN' ? '：' : ': '}${ruleDescription}`
       : finding.ruleId;
-    const localizedCopy =
-      locale === 'zh-CN'
-        ? chineseFindingCopy[finding.ruleId as keyof typeof chineseFindingCopy]
-        : undefined;
-    const message = localizedCopy?.message ?? finding.message;
-    const remediation = localizedCopy?.remediation ?? finding.remediation;
+    const localizedCopy = localizedFindingCopy(finding, locale);
+    const message = localizedCopy.message;
+    const remediation = localizedCopy.remediation;
     const tooltipId = `rule-tooltip-${index}`;
     return `<article class="finding" data-classification="${escapeHtml(finding.classification)}" data-rule="${escapeHtml(finding.ruleId)}" data-file="${escapeHtml(finding.filePath)}"><header><b>${escapeHtml(classification)} (${escapeHtml(finding.classification)})</b> <span class="rule-id" tabindex="0" aria-describedby="${tooltipId}"><code title="${escapeHtml(ruleTitle)}" aria-label="${escapeHtml(ruleTitle)}">${escapeHtml(finding.ruleId)}</code><span id="${tooltipId}" class="rule-tooltip" role="tooltip">${escapeHtml(ruleTitle)}</span></span> · ${escapeHtml(severity)} (${escapeHtml(severity)}) · ${escapeHtml(finding.filePath)}:${finding.line}</header><p>${escapeHtml(message)}</p><details><summary>${escapeHtml(t.remediation)}</summary><p>${escapeHtml(remediation)}</p></details></article>`;
   });
@@ -304,8 +471,7 @@ export function renderHtml(
   const frameworkSummary = `<section class="framework-summary" aria-label="${escapeHtml(t.frameworkSummary)}"><h2>${escapeHtml(t.frameworkSummary)}</h2><p class="framework-summary-note">${escapeHtml(t.runnerCountsNotAvailable)}</p><div class="framework-grid">${frameworkSummaries.map(({ framework, callbackCount, findingCount }) => `<p class="framework-card">${escapeHtml(framework === 'vitest' ? 'Vitest' : framework === 'playwright' ? 'Playwright' : framework === 'jest' ? 'Jest' : framework)} · ${escapeHtml(t.staticCallbacks)} ${callbackCount} · ${escapeHtml(t.findingCount)} ${findingCount}</p>`).join('')}</div></section>`;
   const navigation = `<nav><h2>${escapeHtml(t.navigation)}</h2>${ruleCounts
     .map(([rule, count]) => {
-      const description =
-        ruleDescriptions[rule as keyof typeof ruleDescriptions]?.[locale];
+      const description = getRuleDescription(rule, locale);
       return `<button type="button" class="rule-navigation-item" data-filter-kind="rule" data-filter-value="${escapeHtml(rule)}"><span>${escapeHtml(rule)} <b>${count}</b></span>${description ? `<small class="rule-navigation-description">${escapeHtml(description)}</small>` : ''}</button>`;
     })
     .join(
@@ -321,12 +487,33 @@ export function renderHtml(
 </style><main><h1>${t.title}</h1><div class="report-layout"><aside class="report-navigation" aria-label="${escapeHtml(t.navigationLabel)}">${navigation}</aside><section class="report-content"><p>${t.sourceOnly} ${t.noStrong}</p><section class="grid"><div class="card">${t.auditItems}<br><b>${result.summary.total}</b></div><div class="card">${t.extractedTests}<br><b>${result.tests.length}</b></div><div class="card">${t.fake}<br><b>${result.summary.fake}</b></div><div class="card">${t.weak}<br><b>${result.summary.weak}</b></div><div class="card">${t.unassessed}<br><b>${result.summary.unassessed}</b></div><div class="card">${t.ftr}<br><b>${result.summary.fakeTestRatio.toFixed(2)}%</b></div><div class="card">${t.trust}<br><b>${result.summary.trustScore}</b></div></section>${frameworkSummary}<fieldset><legend>${t.filter}</legend><select id="classification"><option value="">${t.findings}</option><option value="FAKE">${t.fake}</option><option value="WEAK">${t.weak}</option><option value="INVALID">${t.invalid}</option></select><label for="rule">${t.rule}</label><input id="rule" aria-label="${t.rule}" placeholder="${t.rule}"><label for="file">${t.file}</label><input id="file" aria-label="${t.file}" placeholder="${t.file}"><button id="reset">${t.reset}</button></fieldset><p id="empty" class="${data.length ? 'hidden' : ''}">${t.noResults}</p><section id="findings">${groupedCards}</section></section></div></main><script>const q=s=>document.querySelector(s),all=[...document.querySelectorAll('.finding')];function f(){const c=q('#classification').value,r=q('#rule').value.toLowerCase(),p=q('#file').value.toLowerCase();let n=0;all.forEach(x=>{const ok=(!c||x.dataset.classification===c)&&(!r||x.dataset.rule.toLowerCase().includes(r))&&(!p||x.dataset.file.toLowerCase().includes(p));x.classList.toggle('hidden',!ok);if(ok)n++});document.querySelectorAll('.finding-group').forEach(g=>g.classList.toggle('hidden',![...g.querySelectorAll('.finding')].some(x=>!x.classList.contains('hidden'))));q('#empty').textContent=all.length===0?'${t.noFindings}':'${t.noResults}';q('#empty').classList.toggle('hidden',n>0)}['#rule','#file'].forEach(x=>q(x).addEventListener('input',f));['input','change'].forEach(e=>q('#classification').addEventListener(e,f));q('#reset').onclick=()=>{q('#classification').value=q('#rule').value=q('#file').value='';f()};document.querySelectorAll('[data-filter-kind]').forEach(x=>x.onclick=()=>{if(x.dataset.filterKind==='rule'){q('#file').value='';q('#rule').value=x.dataset.filterValue||''}else if(x.dataset.filterKind==='file'){q('#rule').value='';q('#file').value=x.dataset.filterValue||''}else{q('#classification').value=x.dataset.filterValue||'';q('#rule').value='';q('#file').value='';q('#rule').value='';q('#file').value=''};f()});f();</script></html>`;
 }
 
+export function renderHtml(
+  result: AuditResult,
+  locale: ReportLocale = 'en',
+): string {
+  return renderHtmlBase(result, locale).replace(
+    '<p id="empty" class="',
+    '<p id="empty" role="status" aria-live="polite" class="',
+  );
+}
+
 function countBy(
   values: readonly string[],
 ): ReadonlyArray<readonly [string, number]> {
   const counts = new Map<string, number>();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
   return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+function getRuleDescription(
+  ruleId: string,
+  locale: ReportLocale,
+): string | undefined {
+  const language = locale === 'zh-CN' ? 'zh' : 'en';
+  return (
+    getRuleDefinition(ruleId)?.description[language] ??
+    ruleDescriptions[ruleId as keyof typeof ruleDescriptions]?.[locale]
+  );
 }
 
 function escapeHtml(value: string): string {

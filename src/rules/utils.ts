@@ -31,7 +31,7 @@ export function sourceFileFor(testCase: TestCase): ts.SourceFile {
 }
 
 export function visitNodes(
-  sourceFile: ts.SourceFile,
+  sourceFile: ts.Node,
   predicate: (node: ts.Node) => void,
 ): void {
   function visit(node: ts.Node): void {
@@ -64,6 +64,41 @@ export function expectCalls(sourceFile: ts.SourceFile): ts.CallExpression[] {
   });
 
   return calls;
+}
+
+export function bareExpectCalls(
+  sourceFile: ts.SourceFile,
+): ts.CallExpression[] {
+  return expectCalls(sourceFile).filter((call) => {
+    const parent = call.parent;
+    return !(
+      ts.isPropertyAccessExpression(parent) && parent.expression === call
+    );
+  });
+}
+
+export function assertionCountGuards(
+  sourceFile: ts.SourceFile,
+): ts.CallExpression[] {
+  const guards: ts.CallExpression[] = [];
+  visitNodes(sourceFile, (node) => {
+    if (
+      !ts.isCallExpression(node) ||
+      !ts.isPropertyAccessExpression(node.expression) ||
+      !ts.isIdentifier(node.expression.expression) ||
+      node.expression.expression.text !== 'expect'
+    ) {
+      return;
+    }
+
+    if (
+      node.expression.name.text === 'assertions' ||
+      node.expression.name.text === 'hasAssertions'
+    ) {
+      guards.push(node);
+    }
+  });
+  return guards;
 }
 
 export function assertions(sourceFile: ts.SourceFile): Assertion[] {
@@ -116,6 +151,19 @@ export function hasOnlyZeroArgumentMatchers(
         assertion.matcher.arguments.length === 0 &&
         actualMatches(assertion.actual),
     )
+  );
+}
+
+export function hasOnlyMatchers(
+  sourceFile: ts.SourceFile,
+  matcherNames: readonly string[],
+): boolean {
+  const direct = expectCalls(sourceFile);
+  const found = assertions(sourceFile);
+  return (
+    direct.length > 0 &&
+    direct.length === found.length &&
+    found.every((assertion) => matcherNames.includes(assertion.matcherName))
   );
 }
 

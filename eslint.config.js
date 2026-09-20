@@ -5,7 +5,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 export default [
   eslint.configs.recommended,
   {
-    ignores: ['benchmarks/**', 'dist/**', 'coverage/**'],
+    ignores: ['benchmarks/**', '.worktrees/**', 'dist/**', 'coverage/**'],
   },
   {
     files: ['**/*.ts'],

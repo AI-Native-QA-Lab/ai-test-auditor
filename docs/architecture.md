@@ -52,6 +52,8 @@ flowchart LR
 | `reporters` | Renders a human-readable text projection or the full structured JSON result. | Does not add findings. |
 | `cli` | Parses the command, validates input, renders output, chooses documented exit code. | Does not impose a release policy beyond exit semantics. |
 
+`BenchmarkManifest` is a version `1` source-only contract consumed by `ata benchmark`. Its runner resolves relative fixture paths, calls the existing static `auditPath` pipeline, and compares exact rule/classification identities plus explicit non-triggers without importing or executing fixture source. `renderText` accepts `en` or `zh-CN`; `renderJson` keeps the existing structured schema.
+
 `--policy <path>` supplies an advisory policy to the source-only audit. Invalid policy input exits `2`. The policy evaluator only reports disabled/active selection counts; it cannot remove findings, create a CI gate, or make a release decision.
 
 `ata decision <envelope>` is an advisory decision adapter with valid exit code `0`; malformed envelopes exit `2` and produce no partial decision output.

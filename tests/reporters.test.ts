@@ -51,6 +51,15 @@ describe('reporters', () => {
     expect(output).toContain('Static source analysis only');
   });
 
+  it('localizes text labels and catalog-backed finding copy', () => {
+    const output = renderText(result, 'zh-CN');
+
+    expect(output).toContain('静态审计项：1 总计，1 已评估');
+    expect(output).toContain('虚假测试');
+    expect(output).toContain('仅静态源码分析');
+    expect(output).toContain('UT002：matcher 两侧比较相同的基本字面量。');
+  });
+
   it('warns that no findings do not make tests strong', () => {
     const output = renderText({
       tests: result.tests,
@@ -189,6 +198,28 @@ describe('reporters', () => {
     expect(output).toContain(
       'title="E2E004：page.waitForTimeout 使用了数字字面量。"',
     );
+  });
+
+  it('provides a catalog-backed tooltip for a new E2E rule', () => {
+    const output = renderHtml(
+      {
+        ...result,
+        findings: [{ ...result.findings[0]!, ruleId: 'E2E010' }],
+      },
+      'zh-CN',
+    );
+
+    expect(output).toContain(
+      'title="E2E010：所有直接断言只检查空文本或空属性。"',
+    );
+  });
+
+  it('exposes empty and filtered states as an accessible status', () => {
+    const output = renderHtml({ ...result, tests: [], findings: [] }, 'zh-CN');
+
+    expect(output).toContain('<p id="empty" role="status" aria-live="polite"');
+    expect(output).toContain('没有匹配当前筛选条件的发现项。');
+    expect(output).toContain("q('#empty').classList.toggle('hidden',n>0)");
   });
 
   it('localizes the Chinese HTML finding message and remediation for E2E rules', () => {

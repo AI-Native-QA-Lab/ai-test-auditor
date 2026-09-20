@@ -1,6 +1,19 @@
 # Benchmark fixtures
 
-These are intentionally small **source fixtures** for exercising `ata review`. They are not executed by this project and may refer to illustrative test dependencies.
+These are intentionally small **source fixtures** for exercising `ata review` and
+the versioned `ata benchmark` contract. They are not executed by this project and
+may refer to illustrative test dependencies.
+
+The v1.2 manifest covers the 10 Unit, 10 API, and 10 E2E rule catalogs:
+
+```bash
+npm run benchmark
+```
+
+`ata benchmark` reads source, compares exact `{ ruleId, classification }`
+identities, and reports fixture conformance. It does not import or execute the
+fixture source. A malformed manifest exits `2`; a valid manifest with mismatches
+exits `1`.
 
 After building, run fixtures by test type:
 

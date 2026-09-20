@@ -2,6 +2,8 @@
 
 # 规则目录
 
+目录共包含 31 个稳定 rule ID：10 个 Unit、10 个 API、10 个 E2E，以及 1 个 parser 规则。
+
 ## 如何理解发现项
 
 发现项均是局部、语法级、高置信度的模式证据。信息说明观察到的模式，不证明整个测试或应用必然有缺陷；修复建议应作为人工审查的起点。
@@ -22,6 +24,25 @@
 | E2E004    | WEAK    | WARNING  | `page.waitForTimeout` 使用数值字面量。                                    | 每个固定等待都可避免。                       |
 | PARSER001 | INVALID | WARNING  | TypeScript 为选中的测试文件报告源码 parser 诊断。                         | 测试在框架运行时一定失败或无效。             |
 
+| UT012 | FAKE | CRITICAL | 回调包含没有 matcher 的裸 `expect(...)` 调用。 | 回调没有其他有用副作用。 |
+| UT013 | FAKE | CRITICAL | `expect.assertions(0)` 与实际 matcher 断言同时出现。 | 每个断言计数保护都不正确。 |
+| UT014 | WEAK | WARNING | 所有直接断言都只验证 mock 交互。 | 交互断言永远不能构成有效单元契约。 |
+| UT015 | WEAK | WARNING | 所有直接断言都只使用 snapshot matcher。 | snapshot 永远不能作为有效回归契约。 |
+| API003 | WEAK | WARNING | 所有直接断言只验证 `response` 对象存在。 | response schema 或业务状态一定错误。 |
+| API004 | WEAK | WARNING | 所有 body/data 断言都直接与 request-like 值比较。 | 接口一定没有转换或持久化请求。 |
+| API005 | WEAK | WARNING | 所有 body/data 断言都只检查属性存在。 | 属性值一定错误。 |
+| API006 | WEAK | WARNING | 所有直接断言都只验证 `response.headers` 存在。 | response headers 一定错误或不充分。 |
+| API007 | WEAK | WARNING | 所有直接断言都只检查 response content-type 元数据。 | response body 或业务状态一定正确。 |
+| API008 | WEAK | WARNING | 所有直接断言都只检查 response request 的 method 或 URL 元数据。 | API 行为一定正确。 |
+| API009 | WEAK | WARNING | 所有 body/data 断言都只检查空对象、空数组或零长度。 | 空结果一定不是预期业务结果。 |
+| API010 | FAKE | CRITICAL | API 请求错误被空 `catch` 或 console-only `catch` 吞掉。 | 所有 cleanup 场景中的请求失败都不应被吞掉。 |
+| E2E005 | WEAK | WARNING | selector 字面量使用 class、id、裸 tag、XPath 或 CSS 结构形式。 | 实际应用中的 selector 一定不稳定。 |
+| E2E006 | FAKE | CRITICAL | Playwright 错误被空 `catch` 或 console-only `catch` 吞掉。 | cleanup-only 流程中的 catch 一定错误。 |
+| E2E007 | WEAK | WARNING | Playwright 断言位于 `if`、条件表达式或短路条件分支内。 | 条件一定无效或每条路径都必须使用相同断言。 |
+| E2E008 | FAKE | CRITICAL | 直接 Playwright matcher 表达式没有 await。 | 自定义封装或 `Promise.all` 一定错误处理了 promise。 |
+| E2E009 | WEAK | WARNING | 明确的 page action（如 `goto` 或 `click`）没有 await。 | 后续步骤一定与该 action 发生竞争。 |
+| E2E010 | WEAK | WARNING | 所有直接断言都只检查空文本或空属性值。 | 空 UI 状态一定不是预期流程结果。 |
+
 ## 误报控制
 
 - 规则仅处理提取出的直接回调，不读取执行结果。
@@ -30,6 +51,8 @@
 - `UT004`、`API002`、`E2E003` 要求每个直接断言都符合狭窄的无参数 matcher；修饰符、裸 expect 和混合断言会抑制提示。
 - `PARSER001` 仅报告源码语法，不执行、解析依赖或验证运行时类型。
 - 未命中的测试刻意保持为 `UNASSESSED`。
+- v1.2 规则只使用有边界的源码形式；转换后的值、稳定 selector、重新抛出、已 await 调用、`Promise.all` 和混合有效断言是代表性不可触发样例。
+- `ata benchmark` 比对版本化源码 fixture 以及精确的 rule/classification 身份；它是 fixture 一致性证据，不是运行时质量、覆盖率、mutation、precision、recall 或发布证据。
 
 ## 建议性策略边界
 

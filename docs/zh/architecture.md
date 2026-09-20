@@ -52,6 +52,8 @@ flowchart LR
 | `reporters`     | 将同一结果渲染为文本或 JSON。                                        | 不添加发现项。                                                                 |
 | `cli`           | 解析命令、校验输入、输出报告、选择退出码。                           | 除退出码语义外不设发布策略。                                                   |
 
+`BenchmarkManifest` 是 `ata benchmark` 使用的 version `1` 纯源码契约。runner 解析相对于 manifest 的 fixture 路径，调用现有静态 `auditPath` 管线，比对精确的 rule/classification 身份与明确的 non-triggers，不 import 或执行 fixture 源码。`renderText` 接受 `en` 或 `zh-CN`；`renderJson` 保持现有结构化 schema。
+
 `--policy <path>` 为纯源码审计提供建议性策略。无效策略输入返回退出码 `2`。策略评估器只报告禁用/活跃选择计数；它不能移除发现项、创建 CI 门禁或作出发布决定。
 
 `ata decision <envelope>` 是建议性决策适配器：有效调用返回 `0`；无效信封返回 `2`，且不输出部分决策。

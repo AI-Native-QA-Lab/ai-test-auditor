@@ -2,13 +2,15 @@
 
 # 项目上下文
 
-## 目的与 v1.0 基线
+## 目的与 v1.1.1 基线
 
-AI Test Auditor 是用于识别无效 JavaScript 与 TypeScript 测试的确定性、纯源码静态分析器。v1.0 是当前稳定基线：显式门禁只阻断确定性的 `FAKE`，未标记测试绝不等于强测试。
+AI Test Auditor 是用于识别无效 JavaScript 与 TypeScript 测试的确定性、纯源码静态分析器。v1.1.1 是当前稳定发布版本：显式门禁只阻断确定性的 `FAKE`，未标记测试绝不等于强测试。
 
 ## 当前能力地图
 
 CLI 支持源码审计、变更文件选择、建议性策略、基线比较、建议性决策投影和严格的仅 `FAKE` 门禁。规则语义见[规则目录](./rules.md)，公开行为见[需求文档](./requirements.md)。
+
+v1.2 静态目录包含 10 条 Unit、10 条 API、10 条 E2E 和 1 条 Parser 规则。`ata benchmark` 只校验版本化源码 fixture，不执行它们。`--locale` 本地化人类可读的 text 与 HTML，JSON 保持 schema 兼容。
 
 ## 不可突破的分析边界
 
@@ -24,7 +26,7 @@ CLI 支持源码审计、变更文件选择、建议性策略、基线比较、�
 
 ## 后续迭代入口
 
-[迭代计划](./roadmap.md)是未来工作的唯一详细来源。v2.0 尚未交付；保留的[可选 AI 辅助设计](../superpowers/specs/2026-09-08-optional-ai-assist-design.md)在实施前仍需独立批准。
+[迭代计划](./roadmap.md)是未来工作的唯一详细来源；GitHub Project 是其执行视图，不是第二份路线图。v1.2 承接未完成的静态平台工作并增强现有审计器；v1.5 及之后的工作（包括保留的[可选 AI 辅助设计](../superpowers/specs/2026-09-08-optional-ai-assist-design.md)）在实施前仍需独立批准。
 
 ## 验证与维护
 

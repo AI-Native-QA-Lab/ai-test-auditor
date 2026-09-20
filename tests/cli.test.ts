@@ -1,8 +1,14 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defaultReportOutputPath, runCli } from '../src/cli';
+import {
+  defaultReportOutputPath,
+  InputPathError,
+  parsePackageVersion,
+  runCli,
+} from '../src/cli';
 
 const temporaryRoots: string[] = [];
 
@@ -203,9 +209,24 @@ describe('ata review', () => {
 
   it('reports the current package release version', async () => {
     const invocation = await invoke(['--version']);
+    const manifest = JSON.parse(
+      await readFile(
+        resolve(import.meta.dirname, '..', 'package.json'),
+        'utf8',
+      ),
+    ) as { version: string };
 
     expect(invocation.code).toBe(0);
-    expect(invocation.stdout).toContain('1.0.0');
+    expect(invocation.stdout).toContain(manifest.version);
+  });
+
+  it.each([
+    ['missing version', {}],
+    ['empty version', { version: '  ' }],
+    ['non-string version', { version: 1 }],
+    ['null version', { version: null }],
+  ])('rejects an invalid package manifest: %s', (_label, value) => {
+    expect(() => parsePackageVersion(value)).toThrow(InputPathError);
   });
 
   it('keeps a matching baseline FAKE exit code and returns baseline JSON', async () => {
@@ -293,6 +314,19 @@ describe('ata review', () => {
 
     expect(invocation.code).toBe(2);
     expect(invocation.stderr.toLowerCase()).toContain(expected);
+  });
+
+  it('validates locale before auditing the input path', async () => {
+    const invocation = await invoke([
+      'review',
+      join(tmpdir(), 'ata-missing-before-locale-check'),
+      '--locale',
+      'fr',
+    ]);
+
+    expect(invocation.code).toBe(2);
+    expect(invocation.stderr).toContain('Unsupported locale');
+    expect(invocation.stderr).not.toContain('Input path does not exist');
   });
 
   it('returns 2 for a missing input path', async () => {

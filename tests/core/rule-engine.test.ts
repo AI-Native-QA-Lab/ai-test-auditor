@@ -63,6 +63,53 @@ describe('evaluateRules', () => {
     ).not.toContain('UT001');
   });
 
+  it('reports UT012 for a bare expect call but not for a normal matcher', () => {
+    expect(ids(testCase('{ expect(result); }'))).toContain('UT012');
+    expect(
+      ids(testCase('{ expect(result).toEqual(expected); }')),
+    ).not.toContain('UT012');
+  });
+
+  it('reports UT013 only when assertions(0) contradicts an actual matcher', () => {
+    expect(
+      ids(testCase('{ expect.assertions(0); expect(result).toBe(expected); }')),
+    ).toContain('UT013');
+    expect(
+      ids(testCase('{ expect.assertions(1); expect(result).toBe(expected); }')),
+    ).not.toContain('UT013');
+    expect(
+      ids(
+        testCase('{ expect.hasAssertions(); expect(result).toBe(expected); }'),
+      ),
+    ).not.toContain('UT013');
+  });
+
+  it('reports UT014 only for mock-interaction-only assertions', () => {
+    expect(ids(testCase('{ expect(mock).toHaveBeenCalled(); }'))).toContain(
+      'UT014',
+    );
+    expect(
+      ids(
+        testCase(
+          '{ expect(mock).toHaveBeenCalledWith(input); expect(result).toEqual(expected); }',
+        ),
+      ),
+    ).not.toContain('UT014');
+  });
+
+  it('reports UT015 only for snapshot-only assertions', () => {
+    expect(ids(testCase('{ expect(value).toMatchSnapshot(); }'))).toContain(
+      'UT015',
+    );
+    expect(
+      ids(
+        testCase(
+          '{ expect(value).toMatchSnapshot(); expect(value.id).toBe(expected); }',
+        ),
+      ),
+    ).not.toContain('UT015');
+  });
+
   it('reports UT002 with the literal assertion line', () => {
     const findings = evaluateRules(testCase('{\n  expect(200).toBe(200);\n}'));
 
@@ -166,6 +213,188 @@ describe('evaluateRules', () => {
     ).not.toContain('API001');
   });
 
+  it('reports API003 for response-object existence only', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response).toBeDefined();
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).toContain('API003');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response).toBeDefined();
+  expect(response.body.id).toBe(expectedId);
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API003');
+  });
+
+  it('reports API004 for request-echo-only response assertions', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.body).toEqual(requestBody);
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).toContain('API004');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.body).toEqual(requestPayload.map(normalize));
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API004');
+  });
+
+  it('reports API005 for body property-presence-only assertions', () => {
+    expect(
+      ids(
+        testCase("{ expect(response.body).toHaveProperty('id'); }", {
+          type: 'api',
+        }),
+      ),
+    ).toContain('API005');
+    expect(
+      ids(
+        testCase(
+          "{ expect(response.body).toHaveProperty('id', expectedId); }",
+          {
+            type: 'api',
+          },
+        ),
+      ),
+    ).not.toContain('API005');
+  });
+
+  it('reports API006 for response-headers existence only', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.headers).toBeDefined();
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).toContain('API006');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.headers).toBeDefined();
+  expect(response.body.id).toBe(expectedId);
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API006');
+  });
+
+  it('reports API007 for content-type-only metadata assertions', () => {
+    expect(
+      ids(
+        testCase(
+          "{ expect(response.headers.get('content-type')).toContain('json'); }",
+          {
+            type: 'api',
+          },
+        ),
+      ),
+    ).toContain('API007');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.headers.get('content-type')).toContain('json');
+  expect(response.body.id).toBe(expectedId);
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API007');
+  });
+
+  it('reports API008 for response request metadata only', () => {
+    expect(
+      ids(
+        testCase("{ expect(response.request.method()).toBe('POST'); }", {
+          type: 'api',
+        }),
+      ),
+    ).toContain('API008');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.request.method()).toBe('POST');
+  expect(response.body.id).toBe(expectedId);
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API008');
+  });
+
+  it('reports API009 for empty response results only', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.body).toEqual({});
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).toContain('API009');
+    expect(
+      ids(
+        testCase(
+          `{
+  expect(response.body).toEqual({ id: expectedId });
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API009');
+  });
+
+  it('reports API010 when an API request error is swallowed', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  try { await request.get("/items"); } catch (error) { console.error(error); }
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).toContain('API010');
+    expect(
+      ids(
+        testCase(
+          `{
+  try { await request.get("/items"); } catch (error) { throw error; }
+}`,
+          { type: 'api' },
+        ),
+      ),
+    ).not.toContain('API010');
+  });
+
   it("reports E2E002 only when URL is the test's sole assertion matcher", () => {
     expect(
       ids(
@@ -216,6 +445,151 @@ describe('evaluateRules', () => {
         }),
       ),
     ).not.toContain('E2E004');
+  });
+
+  it('reports E2E005 for unstable literal selectors but not explicit selectors', () => {
+    expect(
+      ids(
+        testCase("{ page.locator('.checkout-button'); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).toContain('E2E005');
+    expect(
+      ids(
+        testCase(
+          `{
+  page.locator('[data-testid="checkout"]');
+  page.getByRole('button', { name: 'Checkout' });
+}`,
+          {
+            framework: 'playwright',
+            type: 'e2e',
+          },
+        ),
+      ),
+    ).not.toContain('E2E005');
+  });
+
+  it('reports E2E006 when a Playwright error is swallowed', () => {
+    const finding = evaluateRules(
+      testCase(
+        '{ try { await page.goto("/"); } catch (error) { console.error(error); } }',
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).find((item) => item.ruleId === 'E2E006');
+    expect(finding).toMatchObject({
+      classification: 'FAKE',
+      severity: 'CRITICAL',
+      confidence: 'HIGH',
+    });
+    expect(
+      ids(
+        testCase(
+          '{ try { await page.goto("/"); } catch (error) { throw error; } }',
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).not.toContain('E2E006');
+  });
+
+  it('reports E2E007 when an assertion is conditional', () => {
+    expect(
+      ids(
+        testCase(
+          "{ if (ready) await expect(page.getByRole('heading')).toBeVisible(); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).toContain('E2E007');
+    expect(
+      ids(
+        testCase("{ await expect(page.getByRole('heading')).toBeVisible(); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).not.toContain('E2E007');
+    expect(
+      ids(
+        testCase(
+          "{ ready && (await expect(page.getByRole('heading')).toBeVisible()); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).toContain('E2E007');
+  });
+
+  it('reports E2E008 for direct unawaited matchers but not wrappers', () => {
+    expect(
+      ids(
+        testCase("{ expect(page.getByRole('heading')).toBeVisible(); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).toContain('E2E008');
+    expect(
+      ids(
+        testCase("{ await expect(page.getByRole('heading')).toBeVisible(); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).not.toContain('E2E008');
+    expect(
+      ids(
+        testCase(
+          "{ await Promise.all([expect(page.getByRole('heading')).toBeVisible()]); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).not.toContain('E2E008');
+  });
+
+  it('reports E2E009 for explicit page actions without await', () => {
+    expect(
+      ids(
+        testCase("{ page.click('#submit'); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).toContain('E2E009');
+    expect(
+      ids(
+        testCase("{ await page.click('#submit'); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).not.toContain('E2E009');
+  });
+
+  it('reports E2E010 for empty text or attribute assertions only', () => {
+    expect(
+      ids(
+        testCase(
+          `{
+  await expect(page.getByRole('status')).toHaveText('');
+  await expect(page.getByRole('status')).toHaveAttribute('aria-label', '');
+}`,
+          {
+            framework: 'playwright',
+            type: 'e2e',
+          },
+        ),
+      ),
+    ).toContain('E2E010');
+    expect(
+      ids(
+        testCase(
+          "{ await expect(page.getByRole('status')).toHaveText('Ready'); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).not.toContain('E2E010');
   });
 
   it('keeps API and E2E findings weak high-confidence warnings', () => {

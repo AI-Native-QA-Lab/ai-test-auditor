@@ -33,6 +33,9 @@ AI 辅助开发可能产生能编译、能运行、甚至提高覆盖率，却�
 - 可以校验和显示外部提供的、带版本的语义报告，作为离线建议性证据；不会执行模型，也不会改变静态分类或退出语义。
 - 英文主文档、中文翻译、基准 fixture、CI 与独立 Skill。
 - GitHub Actions 参考工作流接受 PR base SHA 或手动 `base-ref`，选择变更的受支持测试文件并发布建议性输出，不成为门禁。
+- `ata benchmark [manifest] --format text|json` 校验 version `1` 的纯源码 benchmark manifest。它比对精确的 rule/classification 身份和明确的 non-triggers，不 import 或执行 fixture 源码；`npm run benchmark` 运行仓库内置 corpus。
+- `--locale <en|zh-CN>` 本地化 text 与 HTML 标签和规则目录 copy；JSON 保持 schema 兼容并保留原始 finding 字段。
+- 审计配置兼容没有 version 的旧 JSON，并将其规范化为 version `1`；未知字段、空 include/exclude 模式和不支持的 semantic provider 值属于无效输入。
 
 ## 范围外
 
