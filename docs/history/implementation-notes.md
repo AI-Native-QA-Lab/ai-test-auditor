@@ -101,3 +101,9 @@ GitHub Project 是路线图的执行视图：卡片记录版本、边界、验�
 v1.2.0 正式完成并发布 v1.2 静态审计增强：Unit、API、E2E 各维护 10 条规则；增加 version `1` 的纯源码 benchmark corpus；加固配置、CLI 输入、报告本地化与文档契约；继续保持不执行被审计源码、不访问网络、不引入运行时、mutation 或模型证据的边界。
 
 发布提交前再次通过 23 个测试文件、239 个测试，lint、typecheck、format、build、benchmark（3/3）和 `git diff --check`；`package.json` 与 `package-lock.json` 同步为 `1.2.0`。
+
+## 2026-09-20 advisory workflow 退出语义修复
+
+GitHub Actions run `35501372111` 的 checkout、依赖安装和 build 均通过，失败点是 advisory workflow 在成功生成审计与 decision summary 后继续执行 `exit "$audit_exit"`；改动测试先观察到该旧契约的 RED，再将 `.github/workflows/audit-reference.yml` 改为发现项仍写入 Summary 但以 `0` 完成。无效输入 `2` 仍失败，显式 `audit-gate-reference.yml` 的 gate 退出语义保持不变。
+
+本次修复后的聚焦 workflow 测试为 5/5，完整测试为 23 个文件、239 个测试通过；lint、typecheck、format、build、benchmark（3/3）和 `git diff --check` 均通过。

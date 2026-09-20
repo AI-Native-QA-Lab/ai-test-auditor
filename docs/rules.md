@@ -64,7 +64,7 @@ The explicit `ata gate` command is a FAKE-only gate: it requires `mode: "gate"` 
 
 `ata decision` projects only validated static summary facts into a version `1` advisory decision. It rejects semantic/mutation attachments and unknown fields; policy/baseline IDs are context only. A valid decision returns `0`, but it is not a CI gate, waiver, release decision, or proof that unflagged tests are `STRONG`.
 
-The v0.9 GitHub Actions reference workflow selects changed supported test files from a PR base SHA or manual `base-ref`, projects only allowed fields into `ata decision`, and preserves the static audit exit code. Its Job Summary is advisory; it creates no PR comments.
+The v0.9 GitHub Actions reference workflow selects changed supported test files from a PR base SHA or manual `base-ref`, projects only allowed fields into `ata decision`, and keeps the static audit result in the Job Summary. Findings are advisory and do not fail this workflow; malformed input still fails with exit `2`. It creates no PR comments.
 
 An optional `--policy` file is an input to this source-only audit. Its advisory `disabledRuleIds` affect only policy presentation and disabled/active selection counts. They never remove a finding or change a rule classification, severity, confidence, static summary, FTR, Trust Score, or exit code; policy is not a CI gate or release decision. Invalid policy input exits `2`.
 

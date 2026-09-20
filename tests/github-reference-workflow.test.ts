@@ -144,7 +144,7 @@ describe('GitHub reference workflow envelope projection', () => {
 });
 
 describe('GitHub reference workflow', () => {
-  it('uses changed test files, least privilege, and the original audit exit', async () => {
+  it('publishes advisory findings without turning them into a workflow gate', async () => {
     const workflow = await readFile(referenceWorkflow, 'utf8');
 
     expect(workflow).toContain('pull_request:');
@@ -168,7 +168,8 @@ describe('GitHub reference workflow', () => {
     expect(workflow).toContain('audit_exit=$?');
     expect(workflow).toContain('"$audit_exit" -eq 2');
     expect(workflow).toContain('$GITHUB_STEP_SUMMARY');
-    expect(workflow).toContain('exit "$audit_exit"');
+    expect(workflow).not.toContain('exit "$audit_exit"');
+    expect(workflow).toContain('exit 0');
 
     expect(workflow).not.toContain('pull_request_target');
     expect(workflow).not.toContain('github-token');
