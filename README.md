@@ -94,7 +94,7 @@ Read the [rule catalog](./docs/rules.md) before treating output as a release dec
 
 ## Next
 
-v1.1.1 is the current stable release. v1.2 continues unfinished static-platform work and enhances existing audits and reports; v1.5+ directions are not delivered and are described only in the [Roadmap](./docs/roadmap.md).
+v1.2.0 is the current stable release. It completes the v1.2 static-audit enhancements; v1.5+ directions are not delivered and are described only in the [Roadmap](./docs/roadmap.md).
 
 ## Contributing
 

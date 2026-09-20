@@ -32,7 +32,7 @@ const documentPairs: readonly DocumentPair[] = [
       'production-code-to-test relevance',
       'PARSER001',
       '`2`',
-      'v1.1.1 is the current stable release',
+      'v1.2.0 is the current stable release',
       'ata benchmark',
       'npm run benchmark',
       'v1.2',
@@ -65,7 +65,7 @@ const documentPairs: readonly DocumentPair[] = [
       '生产代码与测试',
       'PARSER001',
       '`2`',
-      'v1.1.1 是当前稳定发布版本',
+      'v1.2.0 是当前稳定发布版本',
       'ata benchmark',
       'npm run benchmark',
       'v1.2',
@@ -119,7 +119,7 @@ const documentPairs: readonly DocumentPair[] = [
     english: 'docs/roadmap.md',
     chinese: 'docs/zh/roadmap.md',
     englishTerms: [
-      'v1.1.1 is the current stable release',
+      'v1.2.0 is the current stable release',
       '2.0',
       'runtime, mutation, and LLM adapters',
       'source-only',
@@ -132,7 +132,7 @@ const documentPairs: readonly DocumentPair[] = [
       'ata benchmark',
     ],
     chineseTerms: [
-      'v1.1.1 是当前稳定发布版本',
+      'v1.2.0 是当前稳定发布版本',
       '2.0',
       '运行时、变异和 LLM 适配器',
       '纯源码',
@@ -149,7 +149,7 @@ const documentPairs: readonly DocumentPair[] = [
     english: 'docs/context.md',
     chinese: 'docs/zh/context.md',
     englishTerms: [
-      'v1.1.1',
+      'v1.2.0',
       'source-only',
       'Roadmap',
       'FAKE',
@@ -160,7 +160,7 @@ const documentPairs: readonly DocumentPair[] = [
       '2026-09-08-optional-ai-assist-design.md',
     ],
     chineseTerms: [
-      'v1.1.1',
+      'v1.2.0',
       '纯源码',
       '迭代计划',
       'FAKE',

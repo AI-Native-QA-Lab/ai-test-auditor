@@ -95,3 +95,9 @@ GitHub Project 是路线图的执行视图：卡片记录版本、边界、验�
 审查发现并修复四项边界问题：空 benchmark manifest 不再以 `0/0 passed` 假通过；配置中的显式 `null` 不再被当作缺省 version/include/exclude；package manifest 读取或解析失败会转换为受控的输入错误和退出码 `2`；中英文 Context 标题与 v1.1.1 基线保持一致。
 
 本次修复先为四类行为补充回归测试并观察到聚焦 RED（4 个新增失败断言），再做最小实现；聚焦 GREEN 为 3 个测试文件、55 个测试通过。修复后的 fresh 门禁为 23 个测试文件、239 个测试通过，lint、类型检查、格式检查、构建、benchmark 和 diff check 均通过；benchmark 为 3/3 fixture，通过 `review benchmarks` 返回的退出码 `1` 仍仅表示样例包含确定性 FAKE/WEAK 发现项。
+
+## 2026-09-20 v1.2.0 发布版本
+
+v1.2.0 正式完成并发布 v1.2 静态审计增强：Unit、API、E2E 各维护 10 条规则；增加 version `1` 的纯源码 benchmark corpus；加固配置、CLI 输入、报告本地化与文档契约；继续保持不执行被审计源码、不访问网络、不引入运行时、mutation 或模型证据的边界。
+
+发布提交前再次通过 23 个测试文件、239 个测试，lint、typecheck、format、build、benchmark（3/3）和 `git diff --check`；`package.json` 与 `package-lock.json` 同步为 `1.2.0`。

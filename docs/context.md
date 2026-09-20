@@ -2,9 +2,9 @@
 
 # Project Context
 
-## Purpose and v1.1.1 baseline
+## Purpose and v1.2.0 baseline
 
-AI Test Auditor is a deterministic, source-only static analyzer for ineffective JavaScript and TypeScript tests. v1.1.1 is the current stable release: the explicit gate blocks only deterministic `FAKE` findings and never treats an unflagged test as strong.
+AI Test Auditor is a deterministic, source-only static analyzer for ineffective JavaScript and TypeScript tests. v1.2.0 is the current stable release: the explicit gate blocks only deterministic `FAKE` findings and never treats an unflagged test as strong.
 
 ## Current capability map
 

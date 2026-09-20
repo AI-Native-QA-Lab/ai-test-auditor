@@ -4,17 +4,18 @@
 
 ## Current baseline
 
-v1.1.1 is the current stable release. It is a deterministic, source-only audit of JavaScript and TypeScript test source, with an explicit opt-in `FAKE`-only policy gate. A release number is not proof that every planned goal for that version was completed; a passing audit or gate is not proof that tests are strong.
+v1.2.0 is the current stable release. It is a deterministic, source-only audit of JavaScript and TypeScript test source, with an explicit opt-in `FAKE`-only policy gate. A release number is not proof that every planned goal for that version was completed; a passing audit or gate is not proof that tests are strong.
 
 ## Delivered evolution
 
-| Range       | Delivered outcome                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| v0.1–v0.3   | AST extraction, deterministic rules, CLI reporting, and offline evidence contracts.                      |
-| v0.4–v0.5   | Mutation-evidence input, Unit/API/E2E rule expansion, and changed-file selection.                        |
-| v0.6–v0.9   | Advisory policy, baseline, decision projection, and a least-privilege GitHub Actions reference workflow. |
-| v1.0        | Explicit opt-in `FAKE`-only gate with stable `0`/`1`/`2` failure semantics.                              |
-| v1.1–v1.1.1 | Offline HTML report usability, localization, stable output paths, and framework-scoped static summaries. |
+| Range       | Delivered outcome                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| v0.1–v0.3   | AST extraction, deterministic rules, CLI reporting, and offline evidence contracts.                             |
+| v0.4–v0.5   | Mutation-evidence input, Unit/API/E2E rule expansion, and changed-file selection.                               |
+| v0.6–v0.9   | Advisory policy, baseline, decision projection, and a least-privilege GitHub Actions reference workflow.        |
+| v1.0        | Explicit opt-in `FAKE`-only gate with stable `0`/`1`/`2` failure semantics.                                     |
+| v1.1–v1.1.1 | Offline HTML report usability, localization, stable output paths, and framework-scoped static summaries.        |
+| v1.2.0      | Static audit rule completion, versioned benchmark corpus, configuration hardening, and reproducible validation. |
 
 Completed-version rationale is available in the Chinese [History](./history/product-evolution.md).
 
@@ -26,7 +27,7 @@ Use fields `Work type` (`Epic`, `Design`, `Implementation`, `Documentation`, `Va
 
 ## v1.2 — Static audit enhancement, completion, and evidence quality
 
-`v1.2` continues the unfinished v1.1 foundation work because `v1.1`/`v1.1.1` version numbers are already used. It also enhances existing audits and report capabilities. It must remain source-only: no runtime execution, network use, semantic inference, or `STRONG` conclusion from an unflagged test.
+`v1.2.0` completes the unfinished v1.1 foundation work because `v1.1`/`v1.1.1` version numbers were already used. It enhances existing audits and report capabilities while remaining source-only: no runtime execution, network use, semantic inference, or `STRONG` conclusion from an unflagged test.
 
 ### Rule baseline to strengthen
 

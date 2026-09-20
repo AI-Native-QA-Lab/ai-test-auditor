@@ -9,7 +9,7 @@
 | [Rules](./rules.md)                                               | Implemented rule semantics, confidence, and exclusions.          |
 | [Roadmap](./roadmap.md)                                           | Current baseline and the single detailed source for future work. |
 | [Development](./development.md)                                   | Setup, TDD, validation, and release-ready workflow.              |
-| [Project Context](./context.md) · [中文](./zh/context.md)         | Stable v1.1.1 map, boundaries, and maintenance entry point.      |
+| [Project Context](./context.md) · [中文](./zh/context.md)         | Stable v1.2.0 map, boundaries, and maintenance entry point.      |
 | [Chinese implementation notes](./history/implementation-notes.md) | Chinese decisions, validation evidence, and known limits.        |
 
 Chinese translations are available under [docs/zh](./zh/README.md).
