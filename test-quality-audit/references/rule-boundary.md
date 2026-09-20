@@ -2,7 +2,9 @@
 
 The GitHub Actions reference workflow uses `base-ref` to select changed source and may render an advisory result, but it never creates a PR comment or execution evidence.
 
-This Skill mirrors the current CLI scope. It can cite UT001, UT002, UT003, UT004, UT008, UT011, API001, API002, E2E001, E2E002, E2E003, and E2E004 only when their documented syntax is present. Read the repository [rule catalog](../../docs/rules.md) for triggers and exclusions.
+This Skill mirrors the current CLI scope. It can cite all 31 catalog IDs: UT001–UT004, UT008, UT011–UT015, API001–API010, E2E001–E2E010, and PARSER001, only when their documented syntax is present. Read the repository [rule catalog](../../docs/rules.md) for triggers and exclusions.
+
+The v1.2 additions remain source-only and bounded: request echoes, metadata-only API checks, empty results, unstable selectors, swallowed Playwright errors, conditional assertions, direct unawaited matchers, unawaited page actions, and empty UI values are not runtime conclusions. `ata benchmark` compares versioned fixture `expectedFindings` and `nonTriggers`; benchmark conformance is not execution evidence.
 
 | Classification  | Use only when                                                               |
 | --------------- | --------------------------------------------------------------------------- |

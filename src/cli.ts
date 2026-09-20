@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { pathToFileURL } from 'node:url';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, basename, join, resolve } from 'node:path';
 import { Command, CommanderError, Option } from 'commander';
@@ -24,6 +24,11 @@ import {
 } from './core/decision.js';
 import { GateError, createGateResult } from './core/gate.js';
 import { GatePolicyError, loadGatePolicy } from './core/gate-policy.js';
+import {
+  BenchmarkError,
+  renderBenchmarkText,
+  runBenchmark,
+} from './core/benchmark.js';
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -50,7 +55,16 @@ export async function runCli(
   args: readonly string[],
   io: CliIo = defaultIo,
 ): Promise<number> {
-  const program = createProgram(io);
+  let program: Command;
+  try {
+    program = createProgram(io);
+  } catch (error) {
+    if (error instanceof InputPathError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
+    throw error;
+  }
   let resultCode = 0;
 
   program
@@ -103,7 +117,7 @@ export async function runCli(
         options: {
           readonly type: ReviewType;
           readonly format: OutputFormat;
-          readonly locale: ReportLocale;
+          readonly locale: string;
           readonly output?: string;
           readonly printOutputPath?: boolean;
           readonly config?: string;
@@ -114,6 +128,7 @@ export async function runCli(
           readonly baseline?: string;
         },
       ) => {
+        const locale = parseReportLocale(options.locale);
         const result = await auditPath(inputPath, {
           type: options.type,
           configPath: options.config,
@@ -128,17 +143,14 @@ export async function runCli(
           ? await loadMutationReport(options.mutationReport)
           : undefined;
         const rendered = { ...result, semantic, mutation };
-        if (options.locale !== 'en' && options.locale !== 'zh-CN')
-          throw new InputPathError('Unsupported locale. Use en or zh-CN.');
         const text =
           options.format === 'json'
             ? renderJson(rendered)
             : options.format === 'html'
-              ? renderHtml(rendered, options.locale)
-              : renderText(rendered);
+              ? renderHtml(rendered, locale)
+              : renderText(rendered, locale);
         const outputPath =
-          options.output ??
-          defaultReportOutputPath(options.format, options.locale);
+          options.output ?? defaultReportOutputPath(options.format, locale);
         if (outputPath) {
           await writeReport(outputPath, text);
           if (options.printOutputPath)
@@ -146,6 +158,34 @@ export async function runCli(
         } else io.stdout(text);
         resultCode =
           result.summary.invalid > 0 ? 2 : result.summary.fake > 0 ? 1 : 0;
+      },
+    );
+
+  program
+    .command('benchmark')
+    .description('Run versioned source-only benchmark fixtures')
+    .argument(
+      '[manifest]',
+      'benchmark manifest path',
+      'benchmarks/manifest.json',
+    )
+    .addOption(
+      new Option('--format <format>', 'benchmark output format')
+        .choices(['text', 'json'])
+        .default('text'),
+    )
+    .action(
+      async (
+        manifestPath: string,
+        options: { readonly format: 'text' | 'json' },
+      ) => {
+        const result = await runBenchmark(manifestPath);
+        if (options.format === 'json') {
+          io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+        } else {
+          io.stdout(renderBenchmarkText(result));
+        }
+        resultCode = result.status === 'failed' ? 1 : 0;
       },
     );
 
@@ -218,6 +258,10 @@ export async function runCli(
       io.stderr(`Error: ${error.message}\n`);
       return 2;
     }
+    if (error instanceof BenchmarkError) {
+      io.stderr(`Error: ${error.message}\n`);
+      return 2;
+    }
     throw error;
   }
 }
@@ -239,12 +283,46 @@ function createProgram(io: CliIo): Command {
     .description(
       'Deterministic static analysis for JavaScript and TypeScript tests',
     )
-    .version('1.0.0')
+    .version(readPackageVersion())
     .exitOverride()
     .configureOutput({
       writeOut: io.stdout,
       writeErr: io.stderr,
     });
+}
+
+function readPackageVersion(): string {
+  try {
+    return parsePackageVersion(
+      JSON.parse(
+        readFileSync(
+          new globalThis.URL('../package.json', import.meta.url),
+          'utf8',
+        ),
+      ),
+    );
+  } catch (error) {
+    if (error instanceof InputPathError) throw error;
+    throw new InputPathError('Package manifest cannot be read.');
+  }
+}
+
+export function parsePackageVersion(value: unknown): string {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    typeof (value as { version?: unknown }).version !== 'string' ||
+    (value as { version: string }).version.trim() === ''
+  ) {
+    throw new InputPathError('Package manifest does not contain a version.');
+  }
+  return (value as { version: string }).version;
+}
+
+function parseReportLocale(value: string): ReportLocale {
+  if (value === 'en' || value === 'zh-CN') return value;
+  throw new InputPathError('Unsupported locale. Use en or zh-CN.');
 }
 
 const entryPoint = process.argv[1];

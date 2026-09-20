@@ -30,6 +30,7 @@ optional_baseline: <粘贴 advisory 基线 JSON>
 7. 将提供的 version `1` 基线只视为身份成员关系。历史发现项不代表已接受、已豁免、已解决或强测试，基线计数也不能改变静态发现项、分数、策略计数或退出语义。
 8. 将 `ata decision` 仅视为带原因码的建议性静态摘要；它不是 CI 门禁、发布决定，也不能证明未标记测试是 strong。
 9. 将 `ata gate` 视为显式仅 FAKE 门禁；它不能因 WEAK 阻断或推断 STRONG。
+10. 将 `ata benchmark` 仅视为版本化源码 fixture 一致性校验。比对声明的 `expectedFindings` 与 `nonTriggers`，不得把 benchmark 通过描述为运行时质量、覆盖率、mutation、precision、recall 或发布证据。
 
 ## 输出格式
 

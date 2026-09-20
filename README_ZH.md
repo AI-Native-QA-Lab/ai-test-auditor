@@ -50,10 +50,17 @@ node dist/cli.js gate ./gate-policy.json ./audit-envelope.json
 # 生成可本地打开和筛选的报告；默认英文。
 node dist/cli.js review ./tests --format html --output audit.html
 node dist/cli.js review ./tests --format html --locale zh-CN --output audit-zh.html
+
+# 运行版本化、纯源码的 v1.2 benchmark fixture。
+npm run benchmark
 ```
 
 `--output` 支持 text、json、html。HTML 未指定 `--output` 时默认写入当前目录的 `audit.html`，使用 `--locale zh-CN` 时默认写入 `audit-zh.html`；text 与 JSON 继续写入标准输出。`--locale zh-CN` 本地化 text 与 HTML；不输入时为 `en`。JSON 保持稳定 schema 与英文消息。
 HTML 写入报告时标准输出保持干净；如需在命令行获取绝对路径，可追加 `--print-output-path`，路径会输出到标准错误。
+
+v1.2 benchmark manifest 覆盖 10 条 Unit 规则、10 条 API 规则和 10 条 E2E 规则。`ata benchmark [manifest]` 通过静态审计管线读取 fixture 源码，比对精确的 rule/classification 身份并报告 fixture 一致性；它绝不 import 或执行 fixture。benchmark 输入格式无效返回 `2`，有效 manifest 但结果不一致返回 `1`。
+
+审计配置兼容没有 version 的旧 JSON，并将其规范化为 version `1`；未知字段、空的 include/exclude 模式和不支持的 semantic provider 都属于无效输入。`--locale en` 与 `--locale zh-CN` 只选择 text/HTML 语言，不改变 JSON schema。
 
 `--policy` 只是 advisory：它只报告禁用/活跃选择计数，不改变发现项、分类、汇总、FTR、Trust Score 或退出语义。无效策略输入返回 `2`；它不是默认 CI 门禁，也不作发布决定。`ata decision` 同样只是建议性：有效决策返回 `0`，无效输入返回 `2`。
 
@@ -87,7 +94,7 @@ HTML 写入报告时标准输出保持干净；如需在命令行获取绝对路
 
 ## 下一步
 
-v1.0 是当前稳定基线。v2.0 尚未交付；运行时、mutation 与 AI/LLM 的可选方向仅在[迭代计划](./docs/zh/roadmap.md)中说明。
+v1.1.1 是当前稳定发布版本。v1.2 承接未完成的静态平台工作并增强现有审计与报告；v1.5 及之后的方向尚未交付，仅在[迭代计划](./docs/zh/roadmap.md)中说明。
 
 ## 参与贡献
 

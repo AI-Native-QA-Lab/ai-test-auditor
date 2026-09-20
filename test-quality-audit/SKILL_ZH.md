@@ -35,3 +35,9 @@ description: 当需要审查 JavaScript 或 TypeScript Unit、API、Playwright �
 - 编造产品需求、期望值、测试执行结果、质量分数或生产缺陷。
 - 没有已记录的确定性触发条件时将 `WEAK` 升级为 `FAKE`。
 - 声称修改建议能证明测试会发现所有回归。
+
+## v1.2 静态目录与 benchmark
+
+当前 v1.2 目录包含 10 条 Unit、10 条 API、10 条 E2E 规则以及 `PARSER001`。使用 `ata benchmark` 或 `npm run benchmark` 检查版本化源码 fixture 与精确的 rule/classification 身份。benchmark 输出只表示 fixture 一致性，不是运行时质量、覆盖率、mutation、precision、recall 或发布证据。
+
+`--locale en` 与 `--locale zh-CN` 本地化人类可读的 text 和 HTML。审计配置兼容没有 version 的旧文件并规范化为 version `1`，但会拒绝未知字段、空模式和不支持的 provider。JSON 继续是稳定的机器接口 schema。

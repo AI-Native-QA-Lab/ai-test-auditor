@@ -30,6 +30,7 @@ optional_baseline: <paste advisory baseline JSON>
 7. Treat a supplied version `1` baseline as identity membership only. Historical findings are not accepted, waived, resolved, or strong, and baseline counts cannot change static findings, scores, policy counts, or exit semantics.
 8. Treat `ata decision` as an advisory static summary with reason codes only; it is not a CI gate, release decision, or evidence that unflagged tests are strong.
 9. Treat `ata gate` as an explicit FAKE-only gate; it must not block on WEAK or infer STRONG.
+10. Use `ata benchmark` only as versioned source-fixture conformance. Compare declared `expectedFindings` and `nonTriggers`, and never describe a benchmark pass as runtime quality, coverage, mutation, precision, recall, or release evidence.
 
 ## Response format
 

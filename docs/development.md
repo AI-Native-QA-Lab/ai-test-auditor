@@ -28,12 +28,16 @@ npm run lint
 npm run typecheck
 npm run format:check
 npm run build
+npm run benchmark
 node dist/cli.js review benchmarks --format json
 node dist/cli.js review . --changed-since HEAD
 git diff --check
 ```
 
 `npm run format` modifies files; use `format:check` for verification. The generated `dist/` output is ignored and should be rebuilt for CLI checks.
+`vitest.config.ts` limits local test discovery to `tests/**/*.test.ts` and excludes managed `.worktrees/**`; benchmark source remains a static fixture, not an executed test.
+
+The v1.2 catalog target is 10 Unit, 10 API, and 10 E2E rules plus Parser. `npm run benchmark` reports fixture conformance only.
 
 ## Rule implementation checklist
 

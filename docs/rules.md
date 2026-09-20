@@ -2,6 +2,8 @@
 
 # Rule Catalog
 
+The catalog contains 31 stable rule IDs: 10 Unit, 10 API, 10 E2E, and 1 parser rule.
+
 ## Reading a finding
 
 Rule findings are syntactic, local, and high-confidence for the narrow pattern named by their ID. A message explains the observed pattern; it does not prove the whole test or application is defective. Use the remediation as a review starting point.
@@ -22,6 +24,25 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 | E2E004    | WEAK    | WARNING  | `page.waitForTimeout` receives a numeric literal.                                                              | That every fixed wait is avoidable in an external-system workflow.          |
 | PARSER001 | INVALID | WARNING  | TypeScript reports a source parser diagnostic for a selected test file.                                        | That the test would fail or be invalid at framework runtime.                |
 
+| UT012 | FAKE | CRITICAL | A callback contains a bare `expect(...)` call without a matcher. | That the callback has no other useful side effect. |
+| UT013 | FAKE | CRITICAL | `expect.assertions(0)` appears alongside an actual matcher assertion. | That every assertion-count guard is incorrect. |
+| UT014 | WEAK | WARNING | Every direct assertion only verifies mock interaction. | That interaction assertions never represent a valid unit contract. |
+| UT015 | WEAK | WARNING | Every direct assertion only uses a snapshot matcher. | That snapshots are never valid regression contracts. |
+| API003 | WEAK | WARNING | Every direct assertion only verifies that the `response` object exists. | That the response schema or business state is incorrect. |
+| API004 | WEAK | WARNING | Every body/data assertion directly compares with a request-like value. | That the endpoint failed to transform or persist the request. |
+| API005 | WEAK | WARNING | Every body/data assertion only checks property existence. | That the properties have incorrect values. |
+| API006 | WEAK | WARNING | Every direct assertion only verifies that `response.headers` exists. | That the response headers are incorrect or insufficient. |
+| API007 | WEAK | WARNING | Every direct assertion only checks response content-type metadata. | That the response body or business state is correct. |
+| API008 | WEAK | WARNING | Every direct assertion only checks response request method or URL metadata. | That the API behavior is correct. |
+| API009 | WEAK | WARNING | Every body/data assertion only checks an empty object, empty array, or zero length. | That the empty result is not the intended business outcome. |
+| API010 | FAKE | CRITICAL | An API request error is swallowed by an empty or console-only `catch`. | That the request failure was unexpected in every cleanup scenario. |
+| E2E005 | WEAK | WARNING | A literal selector uses a class, id, bare tag, XPath, or CSS structure form. | That a selector is unstable in the actual application. |
+| E2E006 | FAKE | CRITICAL | A Playwright error is swallowed by an empty or console-only `catch`. | That the catch is wrong for a cleanup-only journey. |
+| E2E007 | WEAK | WARNING | A Playwright assertion is inside an `if`, conditional, or short-circuit branch. | That the condition is invalid or every path must assert the same result. |
+| E2E008 | FAKE | CRITICAL | A direct Playwright matcher expression is not awaited. | That a custom wrapper or `Promise.all` is incorrectly handling the promise. |
+| E2E009 | WEAK | WARNING | An explicit page action such as `goto` or `click` is not awaited. | That later steps definitely race the action. |
+| E2E010 | WEAK | WARNING | Every direct assertion only checks empty text or an empty attribute value. | That an empty UI state is not the intended journey outcome. |
+
 ## False-positive controls
 
 - Rules operate only on extracted direct callbacks and never inspect execution results.
@@ -30,6 +51,8 @@ Rule findings are syntactic, local, and high-confidence for the narrow pattern n
 - `UT004`, `API002`, and `E2E003` require every direct assertion to be the narrow zero-argument matcher pattern; modifiers, bare expects, and mixed assertions suppress the hint.
 - `PARSER001` reports source syntax only; it does not execute, resolve, or type-check the test at runtime.
 - Unflagged tests are deliberately `UNASSESSED`.
+- The v1.2 rules use bounded source forms; transformed values, stable selectors, rethrows, awaited calls, `Promise.all`, and mixed meaningful assertions are representative non-triggers.
+- `ata benchmark` compares versioned source fixtures and exact finding/classification identities; it is fixture conformance evidence, not runtime quality, coverage, mutation, precision, recall, or release evidence.
 
 ## Advisory policy boundary
 

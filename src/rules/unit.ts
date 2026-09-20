@@ -2,7 +2,10 @@ import * as ts from 'typescript';
 import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
+  assertionCountGuards,
+  bareExpectCalls,
   expectCalls,
+  hasOnlyMatchers,
   hasOnlyZeroArgumentMatchers,
   finding,
   isSimpleLiteral,
@@ -41,6 +44,98 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
         ),
         fakeRemediation(
           'Add an assertion for an observable behavior or side effect.',
+        ),
+      ),
+    );
+  }
+
+  const bareExpect = bareExpectCalls(sourceFile)[0];
+  if (bareExpect) {
+    findings.push(
+      finding(
+        testCase,
+        bareExpect,
+        'UT012',
+        'FAKE',
+        'CRITICAL',
+        'HIGH',
+        fakeMessage('UT012 calls expect without a matcher assertion.'),
+        fakeRemediation(
+          'Use a matcher that compares an observed value with an independently derived expectation.',
+        ),
+      ),
+    );
+  }
+
+  const zeroAssertionGuard = assertionCountGuards(sourceFile).find(
+    (guard) =>
+      guard.expression.getText() === 'expect.assertions' &&
+      guard.arguments.length === 1 &&
+      guard.arguments[0]?.kind === ts.SyntaxKind.NumericLiteral &&
+      guard.arguments[0].getText() === '0',
+  );
+  if (zeroAssertionGuard && testAssertions.length > 0) {
+    findings.push(
+      finding(
+        testCase,
+        zeroAssertionGuard,
+        'UT013',
+        'FAKE',
+        'CRITICAL',
+        'HIGH',
+        fakeMessage(
+          'UT013 declares zero expected assertions while also containing a matcher assertion.',
+        ),
+        fakeRemediation(
+          'Set the assertion count to the actual number of assertions or remove the contradictory guard.',
+        ),
+      ),
+    );
+  }
+
+  if (
+    hasOnlyMatchers(sourceFile, [
+      'toHaveBeenCalled',
+      'toHaveBeenCalledTimes',
+      'toHaveBeenCalledWith',
+      'toHaveBeenLastCalledWith',
+      'toHaveBeenNthCalledWith',
+    ])
+  ) {
+    findings.push(
+      finding(
+        testCase,
+        testAssertions[0]!.matcher,
+        'UT014',
+        'WEAK',
+        'WARNING',
+        'HIGH',
+        fakeMessage(
+          'UT014 verifies only mock interaction and does not show a value or state outcome.',
+        ),
+        fakeRemediation(
+          'Add a value, state, or observable effect assertion when the interaction alone is not the intended contract.',
+        ),
+      ),
+    );
+  }
+
+  if (
+    hasOnlyMatchers(sourceFile, ['toMatchSnapshot', 'toMatchInlineSnapshot'])
+  ) {
+    findings.push(
+      finding(
+        testCase,
+        testAssertions[0]!.matcher,
+        'UT015',
+        'WEAK',
+        'WARNING',
+        'HIGH',
+        fakeMessage(
+          'UT015 verifies only a snapshot representation. Static analysis cannot determine whether the snapshot is an adequate oracle.',
+        ),
+        fakeRemediation(
+          'Add an independently meaningful value, state, or effect assertion when snapshot coverage alone is insufficient.',
         ),
       ),
     );

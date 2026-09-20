@@ -1,0 +1,47 @@
+{
+  "version": "1",
+  "cases": [
+    {
+      "id": "v1-unit-enhancements",
+      "sourcePath": "v1/unit-enhancements.test.ts",
+      "type": "unit",
+      "expectedFindings": [
+        { "ruleId": "UT012", "classification": "FAKE" },
+        { "ruleId": "UT013", "classification": "FAKE" },
+        { "ruleId": "UT014", "classification": "WEAK" },
+        { "ruleId": "UT015", "classification": "WEAK" }
+      ],
+      "nonTriggers": ["UT001", "UT002", "UT003", "UT004", "UT008", "UT011"]
+    },
+    {
+      "id": "v1-api-enhancements",
+      "sourcePath": "v1/api-enhancements.test.ts",
+      "type": "api",
+      "expectedFindings": [
+        { "ruleId": "API003", "classification": "WEAK" },
+        { "ruleId": "API004", "classification": "WEAK" },
+        { "ruleId": "API005", "classification": "WEAK" },
+        { "ruleId": "API006", "classification": "WEAK" },
+        { "ruleId": "API007", "classification": "WEAK" },
+        { "ruleId": "API008", "classification": "WEAK" },
+        { "ruleId": "API009", "classification": "WEAK" },
+        { "ruleId": "API010", "classification": "FAKE" }
+      ],
+      "nonTriggers": ["API001", "API002"]
+    },
+    {
+      "id": "v1-e2e-enhancements",
+      "sourcePath": "v1/e2e-enhancements.e2e.ts",
+      "type": "e2e",
+      "expectedFindings": [
+        { "ruleId": "E2E005", "classification": "WEAK" },
+        { "ruleId": "E2E006", "classification": "FAKE" },
+        { "ruleId": "E2E007", "classification": "WEAK" },
+        { "ruleId": "E2E008", "classification": "FAKE" },
+        { "ruleId": "E2E009", "classification": "WEAK" },
+        { "ruleId": "E2E010", "classification": "WEAK" }
+      ],
+      "nonTriggers": ["E2E001", "E2E002", "E2E003", "E2E004"]
+    }
+  ]
+}

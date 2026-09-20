@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { AuditPolicy, Finding, PolicyEvaluation } from './types.js';
+import { supportedRuleIds } from '../rules/catalog.js';
 
 export type { AuditPolicy, PolicyEvaluation } from './types.js';
 
@@ -10,21 +11,7 @@ export class PolicyError extends Error {
   }
 }
 
-const supportedRuleIds = new Set([
-  'UT001',
-  'UT002',
-  'UT003',
-  'UT004',
-  'UT008',
-  'UT011',
-  'API001',
-  'API002',
-  'E2E001',
-  'E2E002',
-  'E2E003',
-  'E2E004',
-  'PARSER001',
-]);
+const supportedRuleIdSet = new Set(supportedRuleIds());
 
 export function parsePolicy(value: unknown): AuditPolicy {
   if (!value || typeof value !== 'object') {
@@ -88,7 +75,7 @@ function isValidDisabledRuleIds(value: unknown): value is readonly string[] {
   return (
     Array.isArray(value) &&
     value.every(isNonEmptyString) &&
-    value.every((ruleId) => supportedRuleIds.has(ruleId)) &&
+    value.every((ruleId) => supportedRuleIdSet.has(ruleId)) &&
     new Set(value).size === value.length
   );
 }

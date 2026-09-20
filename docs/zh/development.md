@@ -28,12 +28,16 @@ npm run lint
 npm run typecheck
 npm run format:check
 npm run build
+npm run benchmark
 node dist/cli.js review benchmarks --format json
 node dist/cli.js review . --changed-since HEAD
 git diff --check
 ```
 
 `npm run format` 会改写文件；验证使用 `format:check`。生成的 `dist/` 被忽略；CLI 检查前应重建。
+`vitest.config.ts` 将本地测试发现限制为 `tests/**/*.test.ts`，并排除托管的 `.worktrees/**`；benchmark 源码仍是静态 fixture，不会作为测试执行。
+
+v1.2 目录目标是 10 条 Unit、10 条 API、10 条 E2E 规则，另有 Parser。`npm run benchmark` 只报告 fixture 一致性。
 
 ## 规则实现清单
 

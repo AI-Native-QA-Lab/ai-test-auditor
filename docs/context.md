@@ -2,13 +2,15 @@
 
 # Project Context
 
-## Purpose and v1.0 baseline
+## Purpose and v1.1.1 baseline
 
-AI Test Auditor is a deterministic, source-only static analyzer for ineffective JavaScript and TypeScript tests. v1.0 is the current stable baseline: the explicit gate blocks only deterministic `FAKE` findings and never treats an unflagged test as strong.
+AI Test Auditor is a deterministic, source-only static analyzer for ineffective JavaScript and TypeScript tests. v1.1.1 is the current stable release: the explicit gate blocks only deterministic `FAKE` findings and never treats an unflagged test as strong.
 
 ## Current capability map
 
 The CLI supports source review, changed-file selection, advisory policy, baseline comparison, advisory decision projection, and a strict `FAKE`-only gate. Rule semantics are in [Rules](./rules.md); public behavior is in [Requirements](./requirements.md).
+
+The v1.2 static catalog contains 10 Unit, 10 API, 10 E2E, and 1 Parser rule. `ata benchmark` validates versioned source fixtures only; it does not execute them. `--locale` localizes human-readable text and HTML while JSON remains schema-compatible.
 
 ## Non-negotiable analysis boundaries
 
@@ -24,7 +26,7 @@ Public documents are bilingual: [Roadmap](./roadmap.md), [Development](./develop
 
 ## Future iteration entry point
 
-[Roadmap](./roadmap.md) is the single detailed source for future work. v2.0 is pending, not delivered; its retained [optional AI assist design](./superpowers/specs/2026-09-08-optional-ai-assist-design.md) requires separate approval before implementation.
+[Roadmap](./roadmap.md) is the single detailed source for future work; the GitHub Project is its execution view, not a second roadmap. v1.2 continues unfinished static-platform work and enhances the existing auditor. v1.5+ work, including the retained [optional AI assist design](./superpowers/specs/2026-09-08-optional-ai-assist-design.md), requires separate approval before implementation.
 
 ## Verification and maintenance
 

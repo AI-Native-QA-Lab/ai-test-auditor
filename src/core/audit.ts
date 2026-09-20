@@ -1,7 +1,7 @@
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 import { extractTestsWithDiagnostics } from './extractor.js';
-import { resolveSemanticProvider } from './semantic.js';
+import { AuditConfigError, loadAuditConfig } from './config.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
 import { selectChangedFiles } from './changed-files.js';
@@ -191,27 +191,10 @@ async function readConfig(configPath?: string): Promise<{
 }> {
   if (!configPath) return { include: [], exclude: [] };
   try {
-    const raw: unknown = JSON.parse(
-      await readFile(resolve(configPath), 'utf8'),
-    );
-    if (!raw || typeof raw !== 'object') throw new Error();
-    const candidate = raw as {
-      include?: unknown;
-      exclude?: unknown;
-      semanticProvider?: unknown;
-    };
-    const include = candidate.include ?? [];
-    const exclude = candidate.exclude ?? [];
-    if (
-      !Array.isArray(include) ||
-      !Array.isArray(exclude) ||
-      !include.every((value) => typeof value === 'string') ||
-      !exclude.every((value) => typeof value === 'string')
-    )
-      throw new Error();
-    resolveSemanticProvider(candidate.semanticProvider);
-    return { include, exclude };
-  } catch {
+    const config = await loadAuditConfig(resolve(configPath));
+    return config;
+  } catch (error) {
+    if (!(error instanceof AuditConfigError)) throw error;
     throw new InputPathError(`Config file is invalid: ${resolve(configPath)}`);
   }
 }

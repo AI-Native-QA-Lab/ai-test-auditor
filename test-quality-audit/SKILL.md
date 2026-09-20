@@ -35,3 +35,9 @@ Return, in order: scope and evidence, deterministic findings, review questions, 
 - Invent product requirements, expected values, test execution results, quality scores, or production defects.
 - Convert `WEAK` into `FAKE` without a documented deterministic trigger.
 - Claim a recommendation proves an improved test will detect every regression.
+
+## v1.2 static catalog and benchmark
+
+The current v1.2 catalog contains 10 Unit, 10 API, and 10 E2E rules plus `PARSER001`. Use `ata benchmark` or `npm run benchmark` to check versioned source fixtures and exact expected rule/classification identities. Benchmark output is fixture conformance evidence only; it is not runtime quality, coverage, mutation, precision, recall, or release evidence.
+
+`--locale en` and `--locale zh-CN` localize human-readable text and HTML. Audit config accepts legacy files without a version and normalizes them to version `1`, but rejects unknown fields, empty patterns, and unsupported providers. JSON remains the stable machine-facing schema.
