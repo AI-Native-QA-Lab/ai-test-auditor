@@ -74,6 +74,19 @@ describe('auditTestCases', () => {
     });
   });
 
+  it('uses matcher bindings internally without adding them to the audit schema', () => {
+    const result = auditTestCases([
+      {
+        ...testCase('aliased-matcher', '{ check(true).toBe(true); }'),
+        expectBindings: ['check'],
+      },
+    ]);
+
+    expect(result.findings.map((finding) => finding.ruleId)).toContain('UT002');
+    expect(result.tests[0]).not.toHaveProperty('expectBindings');
+    expect(JSON.stringify(result)).not.toContain('expectBindings');
+  });
+
   it('turns source parser diagnostics into INVALID audit findings', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ata-audit-'));
     temporaryRoots.push(root);

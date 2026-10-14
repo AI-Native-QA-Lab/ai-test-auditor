@@ -101,6 +101,40 @@ describe('CI-neutral advisory decision', () => {
     });
   });
 
+  it('rejects internal matcher bindings from the stable audit schema', () => {
+    const envelope = {
+      ...fakeEnvelope,
+      audit: {
+        ...fakeEnvelope.audit,
+        tests: [
+          {
+            ...fakeEnvelope.audit.tests[0],
+            expectBindings: ['check'],
+          },
+        ],
+      },
+    };
+
+    expect(() => parseDecisionEnvelope(envelope)).toThrow(DecisionError);
+  });
+
+  it('rejects malformed matcher binding metadata', () => {
+    const envelope = {
+      ...fakeEnvelope,
+      audit: {
+        ...fakeEnvelope.audit,
+        tests: [
+          {
+            ...fakeEnvelope.audit.tests[0],
+            expectBindings: [''],
+          },
+        ],
+      },
+    };
+
+    expect(() => parseDecisionEnvelope(envelope)).toThrow(DecisionError);
+  });
+
   it.each([
     { ...fakeEnvelope, version: '2' },
     { ...fakeEnvelope, extra: true },

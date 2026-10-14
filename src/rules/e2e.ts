@@ -1,11 +1,13 @@
 import * as ts from 'typescript';
+import { visitExecutableNodes } from './ast-traversal.js';
+import { isShadowedBeforeScope } from '../core/scope-analysis.js';
 import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
   finding,
   hasOnlyZeroArgumentMatchers,
+  expectAssertionForMatcher,
   sourceFileFor,
-  visitNodes,
 } from './utils.js';
 
 export function evaluateE2eRules(testCase: TestCase): Finding[] {
@@ -13,7 +15,13 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
 
   const sourceFile = sourceFileFor(testCase);
   const findings: Finding[] = [];
-  const testAssertions = assertions(sourceFile);
+  const expectBindings = testCase.expectBindings;
+  const testAssertions = assertions(
+    sourceFile,
+    testCase.framework,
+    testCase.nativeAssertionBindings,
+    expectBindings,
+  );
 
   if (testAssertions.length === 0) {
     findings.push(
@@ -48,7 +56,16 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
     );
   }
 
-  if (hasOnlyZeroArgumentMatchers(sourceFile, ['toBeVisible'])) {
+  if (
+    hasOnlyZeroArgumentMatchers(
+      sourceFile,
+      ['toBeVisible'],
+      undefined,
+      testCase.framework,
+      testCase.nativeAssertionBindings,
+      expectBindings,
+    )
+  ) {
     findings.push(
       finding(
         testCase,
@@ -63,94 +80,106 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
     );
   }
 
-  visitNodes(sourceFile, (node) => {
-    if (isUnstableSelectorCall(node)) {
-      findings.push(
-        finding(
-          testCase,
-          node,
-          'E2E005',
-          'WEAK',
-          'WARNING',
-          'HIGH',
-          'E2E005 uses a selector literal based on a class, id, bare tag, XPath, or CSS structure. Static analysis cannot determine whether the selector is stable in the application.',
-          'Prefer an explicit role, label, test id, or other stable contract. Static analysis cannot judge runtime selector stability.',
-        ),
-      );
-    }
-
-    if (ts.isCatchClause(node)) {
-      const tryStatement = node.parent;
-      const statements = node.block.statements;
-      const onlyLogs =
-        statements.length === 0 || statements.every(isConsoleLoggingStatement);
-      if (
-        onlyLogs &&
-        ts.isTryStatement(tryStatement) &&
-        containsPlaywrightCall(tryStatement.tryBlock)
-      ) {
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (isUnstableSelectorCall(node)) {
         findings.push(
           finding(
             testCase,
             node,
-            'E2E006',
-            'FAKE',
-            'CRITICAL',
-            'HIGH',
-            'E2E006 catches a Playwright error and leaves the journey passing. Static analysis cannot determine whether the failure was expected cleanup.',
-            'Assert the expected error or rethrow the Playwright failure so an unexpected journey error can fail the test.',
-          ),
-        );
-      }
-    }
-
-    if (ts.isCallExpression(node) && isPlaywrightMatcher(node)) {
-      if (hasConditionalAncestor(node)) {
-        findings.push(
-          finding(
-            testCase,
-            node,
-            'E2E007',
+            'E2E005',
             'WEAK',
             'WARNING',
             'HIGH',
-            'E2E007 places a Playwright assertion inside a conditional path. Static analysis cannot determine whether every journey path is covered.',
-            'Make the expected assertion unconditional or explicitly test each branch. Static analysis cannot judge whether the condition is intentional.',
+            'E2E005 uses a selector literal based on a class, id, bare tag, XPath, or CSS structure. Static analysis cannot determine whether the selector is stable in the application.',
+            'Prefer an explicit role, label, test id, or other stable contract. Static analysis cannot judge runtime selector stability.',
           ),
         );
       }
 
-      if (isDirectUnawaitedExpression(node)) {
+      if (ts.isCatchClause(node)) {
+        const tryStatement = node.parent;
+        const statements = node.block.statements;
+        const onlyLogs =
+          statements.length === 0 ||
+          statements.every(isConsoleLoggingStatement);
+        if (
+          onlyLogs &&
+          ts.isTryStatement(tryStatement) &&
+          containsPlaywrightCall(
+            tryStatement.tryBlock,
+            expectBindings,
+            testCase.framework,
+          )
+        ) {
+          findings.push(
+            finding(
+              testCase,
+              node,
+              'E2E006',
+              'FAKE',
+              'CRITICAL',
+              'HIGH',
+              'E2E006 catches a Playwright error and leaves the journey passing. Static analysis cannot determine whether the failure was expected cleanup.',
+              'Assert the expected error or rethrow the Playwright failure so an unexpected journey error can fail the test.',
+            ),
+          );
+        }
+      }
+
+      if (
+        ts.isCallExpression(node) &&
+        isPlaywrightMatcher(node, expectBindings)
+      ) {
+        if (hasConditionalAncestor(node)) {
+          findings.push(
+            finding(
+              testCase,
+              node,
+              'E2E007',
+              'WEAK',
+              'WARNING',
+              'HIGH',
+              'E2E007 places a Playwright assertion inside a conditional path. Static analysis cannot determine whether every journey path is covered.',
+              'Make the expected assertion unconditional or explicitly test each branch. Static analysis cannot judge whether the condition is intentional.',
+            ),
+          );
+        }
+
+        if (isDirectUnawaitedExpression(node)) {
+          findings.push(
+            finding(
+              testCase,
+              node,
+              'E2E008',
+              'FAKE',
+              'CRITICAL',
+              'HIGH',
+              'E2E008 calls a Playwright matcher as a direct expression without awaiting it. Static analysis cannot determine whether the promise is awaited elsewhere.',
+              'Await the matcher directly so a failed Playwright assertion rejects the test. Static analysis does not inspect runtime promise handling.',
+            ),
+          );
+        }
+      }
+
+      if (isUnawaitedPageAction(node, testCase)) {
         findings.push(
           finding(
             testCase,
             node,
-            'E2E008',
-            'FAKE',
-            'CRITICAL',
+            'E2E009',
+            'WEAK',
+            'WARNING',
             'HIGH',
-            'E2E008 calls a Playwright matcher as a direct expression without awaiting it. Static analysis cannot determine whether the promise is awaited elsewhere.',
-            'Await the matcher directly so a failed Playwright assertion rejects the test. Static analysis does not inspect runtime promise handling.',
+            'E2E009 found an explicit Playwright page action without a visible await or consumed result. Static analysis cannot determine whether later steps race the action.',
+            'Await the page action or use an explicit synchronization contract. Static analysis cannot verify runtime scheduling.',
           ),
         );
       }
-    }
-
-    if (isUnawaitedPageAction(node)) {
-      findings.push(
-        finding(
-          testCase,
-          node,
-          'E2E009',
-          'WEAK',
-          'WARNING',
-          'HIGH',
-          'E2E009 calls an explicit Playwright page action without awaiting it. Static analysis cannot determine whether later steps race the action.',
-          'Await the page action or use an explicit synchronization contract. Static analysis cannot verify runtime scheduling.',
-        ),
-      );
-    }
-  });
+    },
+    { expectBindings, framework: testCase.framework },
+  );
 
   if (testAssertions.length > 0 && testAssertions.every(isEmptyUiAssertion)) {
     findings.push(
@@ -167,22 +196,26 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
     );
   }
 
-  visitNodes(sourceFile, (node) => {
-    if (!isNumericPageWait(node)) return;
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (!isNumericPageWait(node)) return;
 
-    findings.push(
-      finding(
-        testCase,
-        node,
-        'E2E004',
-        'WEAK',
-        'WARNING',
-        'HIGH',
-        'E2E004 uses a numeric page.waitForTimeout sleep. Static analysis cannot determine whether the wait is required by an external system.',
-        'Wait for a specific page condition or network outcome instead. Static analysis cannot verify all asynchronous dependencies.',
-      ),
-    );
-  });
+      findings.push(
+        finding(
+          testCase,
+          node,
+          'E2E004',
+          'WEAK',
+          'WARNING',
+          'HIGH',
+          'E2E004 uses a numeric page.waitForTimeout sleep. Static analysis cannot determine whether the wait is required by an external system.',
+          'Wait for a specific page condition or network outcome instead. Static analysis cannot verify all asynchronous dependencies.',
+        ),
+      );
+    },
+    { expectBindings, framework: testCase.framework },
+  );
 
   return findings;
 }
@@ -190,6 +223,7 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
 const UNSTABLE_SELECTOR_METHODS = ['locator', '$', '$$'] as const;
 const PLAYWRIGHT_MATCHERS = [
   'toBeAttached',
+  'toBeOK',
   'toBeChecked',
   'toBeDisabled',
   'toBeEditable',
@@ -215,6 +249,9 @@ const PLAYWRIGHT_MATCHERS = [
   'toHaveValue',
   'toHaveValues',
   'toContainText',
+  'toContainClass',
+  'toMatchAriaSnapshot',
+  'toPass',
 ] as const;
 const PAGE_ACTION_METHODS = [
   'goto',
@@ -256,25 +293,33 @@ function isUnstableSelectorCall(node: ts.Node): node is ts.CallExpression {
 
 function isUnstableSelector(selector: string): boolean {
   const value = selector.trim();
+  const engine = /^(css|xpath)=/i.exec(value)?.[1]?.toLowerCase();
+  const selectorBody = engine ? value.slice(engine.length + 1).trim() : value;
+  if (engine === 'xpath') return true;
+
+  const syntax = selectorBody.replace(/\[[^\]]*\]/g, ' ').trim();
   return (
-    value.startsWith('.') ||
-    value.startsWith('#') ||
-    value.startsWith('//') ||
-    value.includes(':nth-') ||
-    /^[a-z][a-z0-9-]*$/i.test(value) ||
-    /[>+~\s]/.test(value)
+    selectorBody.startsWith('//') ||
+    /:nth-/.test(syntax) ||
+    /^[a-z][a-z0-9-]*$/i.test(syntax) ||
+    /[.#][\w-]+/.test(syntax) ||
+    /[>+~\s]/.test(syntax)
   );
 }
 
-function isPlaywrightMatcher(node: ts.CallExpression): boolean {
-  return (
-    ts.isPropertyAccessExpression(node.expression) &&
-    PLAYWRIGHT_MATCHERS.includes(
+function isPlaywrightMatcher(
+  node: ts.CallExpression,
+  expectBindings?: readonly string[],
+  framework: TestCase['framework'] = 'playwright',
+): boolean {
+  if (!ts.isPropertyAccessExpression(node.expression)) return false;
+  const assertion = expectAssertionForMatcher(node, expectBindings, framework);
+  return Boolean(
+    assertion &&
+    (PLAYWRIGHT_MATCHERS.includes(
       node.expression.name.text as (typeof PLAYWRIGHT_MATCHERS)[number],
-    ) &&
-    ts.isCallExpression(node.expression.expression) &&
-    ts.isIdentifier(node.expression.expression.expression) &&
-    node.expression.expression.expression.text === 'expect'
+    ) ||
+      assertion.isPolled),
   );
 }
 
@@ -301,10 +346,19 @@ function isDirectUnawaitedExpression(node: ts.Node): boolean {
   while (ts.isParenthesizedExpression(current.parent)) {
     current = current.parent;
   }
+  if (
+    ts.isVoidExpression(current.parent) &&
+    current.parent.expression === current
+  ) {
+    return true;
+  }
   return ts.isExpressionStatement(current.parent);
 }
 
-function isUnawaitedPageAction(node: ts.Node): node is ts.CallExpression {
+function isUnawaitedPageAction(
+  node: ts.Node,
+  testCase: TestCase,
+): node is ts.CallExpression {
   if (
     !ts.isCallExpression(node) ||
     !ts.isPropertyAccessExpression(node.expression) ||
@@ -315,7 +369,109 @@ function isUnawaitedPageAction(node: ts.Node): node is ts.CallExpression {
   ) {
     return false;
   }
-  return isDirectUnawaitedExpression(node);
+  return (
+    isDirectUnawaitedExpression(node) || isAssignedAndUnused(node, testCase)
+  );
+}
+
+function isAssignedAndUnused(
+  action: ts.CallExpression,
+  testCase: TestCase,
+): boolean {
+  let current: ts.Expression = action;
+  while (ts.isParenthesizedExpression(current.parent)) {
+    current = current.parent;
+  }
+  const declaration = current.parent;
+  if (
+    !ts.isVariableDeclaration(declaration) ||
+    declaration.initializer !== current ||
+    !ts.isIdentifier(declaration.name)
+  ) {
+    return false;
+  }
+
+  const declarationScope = variableDeclarationScope(declaration);
+  if (!declarationScope) return false;
+
+  const declarationName = declaration.name;
+  const localName = declarationName.text;
+  let referenced = false;
+  visitExecutableNodes(
+    action.getSourceFile(),
+    (node) => {
+      if (referenced) return;
+      if (
+        ts.isIdentifier(node) &&
+        node.text === localName &&
+        node !== declarationName &&
+        !isNonReferenceIdentifier(node) &&
+        !isShadowedBeforeScope(node, localName, declarationScope)
+      ) {
+        referenced = true;
+      }
+    },
+    { expectBindings: testCase.expectBindings, framework: testCase.framework },
+  );
+  return !referenced;
+}
+
+function variableDeclarationScope(
+  declaration: ts.VariableDeclaration,
+): ts.Node | undefined {
+  const declarationList = declaration.parent;
+  if (!ts.isVariableDeclarationList(declarationList)) return undefined;
+
+  const isBlockScoped =
+    (declarationList.flags & ts.NodeFlags.BlockScoped) !== 0;
+  let current: ts.Node | undefined = declarationList.parent;
+  if (
+    isBlockScoped &&
+    (ts.isForStatement(current) ||
+      ts.isForInStatement(current) ||
+      ts.isForOfStatement(current)) &&
+    current.initializer === declarationList
+  ) {
+    return current;
+  }
+
+  while (current) {
+    if (
+      isBlockScoped &&
+      (ts.isBlock(current) ||
+        ts.isCaseBlock(current) ||
+        ts.isModuleBlock(current) ||
+        ts.isSourceFile(current))
+    ) {
+      return current;
+    }
+    if (
+      !isBlockScoped &&
+      (ts.isFunctionLike(current) ||
+        ts.isClassStaticBlockDeclaration(current) ||
+        ts.isModuleBlock(current) ||
+        ts.isSourceFile(current))
+    ) {
+      return current;
+    }
+    current = current.parent;
+  }
+  return undefined;
+}
+
+function isNonReferenceIdentifier(identifier: ts.Identifier): boolean {
+  const parent = identifier.parent;
+  return (
+    (ts.isBinaryExpression(parent) &&
+      parent.left === identifier &&
+      parent.operatorToken.kind === ts.SyntaxKind.EqualsToken) ||
+    (ts.isPropertyAccessExpression(parent) && parent.name === identifier) ||
+    (ts.isPropertyAssignment(parent) && parent.name === identifier) ||
+    (ts.isMethodDeclaration(parent) && parent.name === identifier) ||
+    (ts.isPropertyDeclaration(parent) && parent.name === identifier) ||
+    (ts.isVariableDeclaration(parent) && parent.name === identifier) ||
+    (ts.isParameter(parent) && parent.name === identifier)
+  );
 }
 
 function isPageRooted(expression: ts.Expression): boolean {
@@ -329,17 +485,25 @@ function isPageRooted(expression: ts.Expression): boolean {
   return false;
 }
 
-function containsPlaywrightCall(block: ts.Block): boolean {
+function containsPlaywrightCall(
+  block: ts.Block,
+  expectBindings?: readonly string[],
+  framework: TestCase['framework'] = 'unknown',
+): boolean {
   let found = false;
-  visitNodes(block, (node) => {
-    if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      isPageRooted(node.expression.expression)
-    ) {
-      found = true;
-    }
-  });
+  visitExecutableNodes(
+    block,
+    (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        isPageRooted(node.expression.expression)
+      ) {
+        found = true;
+      }
+    },
+    { expectBindings, framework },
+  );
   return found;
 }
 
@@ -363,6 +527,8 @@ function isConsoleLoggingStatement(statement: ts.Statement): boolean {
 function isEmptyUiAssertion(
   assertion: ReturnType<typeof assertions>[number],
 ): boolean {
+  if (assertion.isNegated) return false;
+
   const first = assertion.matcher.arguments[0];
   const second = assertion.matcher.arguments[1];
   if (['toHaveText', 'toContainText'].includes(assertion.matcherName)) {

@@ -1,13 +1,14 @@
 import { readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
+import { isSupportedTestFile } from './test-files.js';
 
 const ignoredDirectories = new Set([
   '.git',
+  '.worktrees',
   'coverage',
   'dist',
   'node_modules',
 ]);
-const testFilePattern = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
 
 export async function scanFiles(root: string): Promise<string[]> {
   const absoluteRoot = resolve(root);
@@ -27,7 +28,7 @@ export async function scanFiles(root: string): Promise<string[]> {
           return;
         }
 
-        if (entry.isFile() && testFilePattern.test(entry.name)) {
+        if (entry.isFile() && isSupportedTestFile(entry.name)) {
           files.push(entryPath);
         }
       }),

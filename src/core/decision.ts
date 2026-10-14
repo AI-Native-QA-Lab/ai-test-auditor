@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import type {
   AdvisoryDecision,
+  AuditTestCase,
   AuditSummary,
   Classification,
   Confidence,
@@ -125,7 +126,7 @@ export function createAdvisoryDecision(
   };
 }
 
-function parseTestCase(value: unknown): TestCase {
+function parseTestCase(value: unknown): AuditTestCase {
   const testCase = object(value, 'Decision test case');
   exactKeys(
     testCase,
@@ -327,7 +328,7 @@ function parseBaseline(value: unknown): DecisionBaselineContext {
 }
 
 function validateStaticSnapshot(
-  tests: readonly TestCase[],
+  tests: readonly AuditTestCase[],
   findings: readonly Finding[],
   summary: AuditSummary,
 ): void {

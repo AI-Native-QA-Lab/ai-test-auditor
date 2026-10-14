@@ -41,7 +41,7 @@ v1.2.1 是当前稳定发布版本。它以确定性、纯源码方式审计 Jav
 
 上表是当前规则清单，不是质量评分，也不承诺固定的规则总数。每条新增规则均需经过设计审查、聚焦 RED/GREEN、代表性不可触发样例、benchmark 标签、规则目录更新和中英文文档同步。
 
-v1.2 benchmark manifest 是 version `1` 的纯源码契约。`ata benchmark`（也由 `npm run benchmark` 调用）比对 10 条 Unit、10 条 API 和 10 条 E2E 规则的精确 finding/classification 身份，并包含明确的 non-triggers。benchmark 输出只表示 fixture 一致性，不是运行时质量、覆盖率、mutation、precision、recall 或发布证据。
+当前目录包含 10 条 Unit、10 条 API 和 10 条 E2E 规则。v1.2 benchmark manifest 是 version `1` 的纯源码契约。`ata benchmark`（也由 `npm run benchmark` 调用）通过 8 个代表性 fixture 比对这些规则目录的精确 finding/classification 身份，并包含明确的 non-triggers。它们不构成逐规则代码覆盖率。benchmark 输出只表示 fixture 一致性，不是运行时质量、覆盖率、mutation、precision、recall 或发布证据。
 
 ### v1.2 Project 卡片
 

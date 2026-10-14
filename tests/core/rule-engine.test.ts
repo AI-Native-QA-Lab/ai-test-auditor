@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateRules } from '../../src/core/rule-engine';
-import type { Framework, TestCase, TestType } from '../../src/core/types';
+import { assertions, sourceFileFor } from '../../src/rules/utils';
+import type {
+  Framework,
+  NativeAssertionBinding,
+  TestCase,
+  TestType,
+} from '../../src/core/types';
 
 function testCase(
   body: string,
   options: {
     readonly framework?: Framework;
     readonly type?: TestType;
+    readonly nativeAssertionBindings?: readonly NativeAssertionBinding[];
     readonly line?: number;
     readonly filePath?: string;
   } = {},
@@ -19,6 +26,9 @@ function testCase(
     line: options.line ?? 10,
     source: `() => ${body}`,
     body,
+    ...(options.nativeAssertionBindings
+      ? { nativeAssertionBindings: options.nativeAssertionBindings }
+      : {}),
   };
 }
 
@@ -52,10 +62,268 @@ describe('evaluateRules', () => {
     );
   });
 
+  it('does not count an uncalled local helper assertion as a test assertion', () => {
+    const findings = ids(
+      testCase(`{
+  function unusedCheck() {
+    expect(1).toBe(1);
+  }
+}`),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('follows a directly called local assertion helper', () => {
+    const findings = ids(
+      testCase(`{
+  function checkResult() {
+    expect(1).toBe(1);
+  }
+  checkResult();
+}`),
+    );
+
+    expect(findings).not.toContain('UT001');
+    expect(findings).toContain('UT002');
+  });
+
+  it('follows a directly called helper through a nested local helper', () => {
+    const findings = ids(
+      testCase(`{
+  function first() { second(); }
+  function second() { third(); }
+  function third() { expect(1).toBe(1); }
+  first();
+}`),
+    );
+
+    expect(findings).not.toContain('UT001');
+    expect(findings).toContain('UT002');
+  });
+
+  it('does not follow a helper name shadowed by a function-scoped var', () => {
+    const findings = ids(
+      testCase(`{
+  function first() {
+    { var second = () => {}; }
+    second();
+  }
+  function second() { expect(1).toBe(1); }
+  first();
+}`),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('does not follow a local assertion helper with a visible reassignment', () => {
+    const findings = ids(
+      testCase(`{
+  let checkResult = () => {
+    expect(1).toBe(1);
+  };
+  checkResult = () => {};
+  checkResult();
+}`),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('follows a local assertion helper called before a later reassignment', () => {
+    const findings = ids(
+      testCase(`{
+  let checkResult = () => {
+    expect(1).toBe(1);
+  };
+  checkResult();
+  checkResult = () => {};
+}`),
+    );
+
+    expect(findings).not.toContain('UT001');
+    expect(findings).toContain('UT002');
+  });
+
+  it('does not follow an uncalled helper shadowed by a nested local function', () => {
+    const findings = ids(
+      testCase(`{
+  function checkResult() {
+    expect(1).toBe(1);
+  }
+  {
+    const checkResult = () => {};
+    checkResult();
+  }
+}`),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('counts assertions in a recognized Promise callback', () => {
+    expect(
+      ids(
+        testCase(
+          '{ return Promise.resolve(1).then((value) => expect(value).toBe(1)); }',
+        ),
+      ),
+    ).not.toContain('UT001');
+  });
+
+  it('counts a returned Promise callback in an expression-bodied test', () => {
+    expect(
+      ids(
+        testCase('Promise.resolve(1).then((value) => expect(value).toBe(1))'),
+      ),
+    ).not.toContain('UT001');
+  });
+
+  it.each([
+    'return Promise.reject(1).catch((error) => expect(error).toBe(1));',
+    'return Promise.resolve(1).finally(() => expect(1).toBe(1));',
+    'return Promise.reject(1).then(undefined, (error) => expect(error).toBe(1));',
+  ])('counts a guaranteed settled Promise `%s` callback', (statement) => {
+    expect(ids(testCase(`{ ${statement} }`))).not.toContain('UT001');
+  });
+
+  it('does not count an unawaited Promise callback as a test assertion', () => {
+    const findings = ids(
+      testCase(
+        '{ Promise.resolve(1).then((value) => expect(value).toBe(1)); }',
+      ),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('counts assertions in a later guaranteed Promise continuation', () => {
+    const nodeTest = testCase(
+      '{ await Promise.resolve(1).then(() => 2).then((value) => assert.strictEqual(value, 2)); }',
+      {
+        framework: 'node-test',
+        type: 'unknown',
+        nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+      },
+    );
+
+    expect(ids(nodeTest)).not.toContain('UT001');
+  });
+
+  it('preserves fulfillment when a catch handler cannot run', () => {
+    const nodeTest = testCase(
+      '{ await Promise.resolve(1).catch(() => {}).then(() => assert.strictEqual(1, 1)); }',
+      {
+        framework: 'node-test',
+        type: 'unknown',
+        nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+      },
+    );
+
+    expect(ids(nodeTest)).not.toContain('UT001');
+  });
+
+  it('does not count a continuation after a Promise handler with unknown outcome', () => {
+    const nodeTest = testCase(
+      '{ await Promise.resolve(1).then(() => loadValue()).then((value) => assert.strictEqual(value, 2)); }',
+      {
+        framework: 'node-test',
+        type: 'unknown',
+        nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+      },
+    );
+
+    expect(ids(nodeTest)).toContain('UT001');
+    expect(ids(nodeTest)).not.toContain('UT002');
+  });
+
+  it.each([
+    'find',
+    'findIndex',
+    'findLast',
+    'findLastIndex',
+    'flatMap',
+    'forEach',
+    'map',
+    'some',
+    'every',
+  ])('counts assertions in array literal `%s` callbacks', (method) => {
+    expect(
+      ids(testCase(`{ [1].${method}((value) => expect(value).toBe(1)); }`)),
+    ).not.toContain('UT001');
+  });
+
+  it('counts array reduction callbacks only when an iteration is guaranteed', () => {
+    expect(
+      ids(
+        testCase(
+          '{ [1, 2].reduce((left, right) => expect(left).toBe(right)); }',
+        ),
+      ),
+    ).not.toContain('UT001');
+    expect(
+      ids(testCase('{ [1].reduce((value) => expect(value).toBe(1), 0); }')),
+    ).not.toContain('UT001');
+  });
+
+  it.each([
+    '[1].sort(() => expect(1).toBe(1));',
+    '[1].toSorted(() => expect(1).toBe(1));',
+    '[1].reduce((left, right) => expect(left).toBe(right));',
+    '[,,].map((value) => expect(value).toBe(1));',
+  ])('does not count a `%s` callback that may not run', (expression) => {
+    const findings = ids(testCase(`{ ${expression} }`));
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it.each([
+    'map',
+    'find',
+    'reduce',
+    'then',
+    'catch',
+    'finally',
+    'poll',
+    'toPass',
+  ])('does not assume a custom `%s` method executes its callback', (method) => {
+    const findings = ids(
+      testCase(
+        `{ const queue = { ${method}: (_callback) => undefined }; queue.${method}(() => expect(1).toBe(1)); }`,
+      ),
+    );
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
+  it('does not assume arbitrary methods execute their callback', () => {
+    expect(
+      ids(
+        testCase('{ values.customVisit((value) => expect(value).toBe(1)); }'),
+      ),
+    ).toContain('UT001');
+  });
+
+  it('does not count callbacks on a definitely empty array literal', () => {
+    const findings = ids(testCase('{ [].map(() => expect(1).toBe(1)); }'));
+
+    expect(findings).toContain('UT001');
+    expect(findings).not.toContain('UT002');
+  });
+
   it('recognizes Node native assertions as assertions', () => {
     const nodeTest = testCase('{ assert.strictEqual(3, 3); }', {
       framework: 'node-test',
       type: 'unknown',
+      nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
     });
 
     expect(ids(nodeTest)).not.toContain('UT001');
@@ -66,11 +334,22 @@ describe('evaluateRules', () => {
     const nodeTest = testCase('{ assert.strictEqual(add(1, 2), 3); }', {
       framework: 'node-test',
       type: 'unknown',
+      nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
     });
 
     expect(ids(nodeTest)).not.toContain('UT002');
     expect(ids(nodeTest)).not.toContain('UT003');
     expect(ids(nodeTest)).not.toContain('UT011');
+  });
+
+  it('keeps deterministic equal-literal failures in Node negative assertions visible', () => {
+    const nodeTest = testCase('{ assert.notStrictEqual(3, 3); }', {
+      framework: 'node-test',
+      type: 'unknown',
+      nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+    });
+
+    expect(ids(nodeTest)).toContain('UT002');
   });
 
   it('does not treat a same-named application function as a Node assertion', () => {
@@ -160,6 +439,55 @@ describe('evaluateRules', () => {
         testCase('{\n  expect(response.body.id).toEqual(response.body.id);\n}'),
       ),
     ).toContain('UT003');
+  });
+
+  it('does not call repeated side-effectful expression evaluation a deterministic fake', () => {
+    const updateExpression = evaluateRules(
+      testCase('{ expect(counter++).toBe(counter++); }'),
+    ).find((finding) => finding.ruleId === 'UT003');
+    const propertyExpression = evaluateRules(
+      testCase('{ expect(response.body.id).toEqual(response.body.id); }'),
+    ).find((finding) => finding.ruleId === 'UT003');
+    const elementExpression = evaluateRules(
+      testCase("{ expect(response['id']).toEqual(response['id']); }"),
+    ).find((finding) => finding.ruleId === 'UT003');
+    const coerciveExpressions = evaluateRules(
+      testCase(
+        '{ expect(value + "").toEqual(value + ""); expect(+value).toEqual(+value); expect(`value=${value}`).toEqual(`value=${value}`); expect({ ...value }).toEqual({ ...value }); expect({ [value]: true }).toEqual({ [value]: true }); }',
+      ),
+    ).filter((finding) => finding.ruleId === 'UT003');
+    const callExpression = evaluateRules(
+      testCase('{ expect(next()).toBe(next()); }'),
+    ).filter((finding) => ['UT003', 'UT011'].includes(finding.ruleId));
+    const freshIdentityExpressions = evaluateRules(
+      testCase(
+        '{ expect([]).toBe([]); expect({}).toBe({}); expect(() => 1).toBe(() => 1); expect(function () {}).toBe(function () {}); expect(class {}).toBe(class {}); expect(/value/).toBe(/value/); }',
+      ),
+    ).filter((finding) => finding.ruleId === 'UT003');
+    const jsxIdentity = evaluateRules(
+      testCase('{ expect(<div />).toBe(<div />); }', {
+        filePath: 'tests/example.test.tsx',
+      }),
+    ).find((finding) => finding.ruleId === 'UT003');
+
+    expect(updateExpression?.classification).toBe('WEAK');
+    expect(propertyExpression?.classification).toBe('WEAK');
+    expect(elementExpression?.classification).toBe('WEAK');
+    expect(coerciveExpressions).toHaveLength(5);
+    expect(
+      coerciveExpressions.every((finding) => finding.classification === 'WEAK'),
+    ).toBe(true);
+    expect(callExpression.length).toBeGreaterThan(0);
+    expect(
+      callExpression.every((finding) => finding.classification === 'WEAK'),
+    ).toBe(true);
+    expect(freshIdentityExpressions).toHaveLength(6);
+    expect(
+      freshIdentityExpressions.every(
+        (finding) => finding.classification === 'WEAK',
+      ),
+    ).toBe(true);
+    expect(jsxIdentity?.classification).toBe('WEAK');
   });
 
   it('does not report UT003 when the assertion compares different expressions', () => {
@@ -290,6 +618,78 @@ describe('evaluateRules', () => {
     ).not.toContain('API004');
   });
 
+  it('does not report API004 when a response is asserted to differ from the request', () => {
+    expect(
+      ids(
+        testCase('{\n  expect(response.body).not.toEqual(requestBody);\n}', {
+          type: 'api',
+        }),
+      ),
+    ).not.toContain('API004');
+  });
+
+  it('reports API004 for a Node native request-echo comparison', () => {
+    const findings = ids(
+      testCase('{ assert.deepStrictEqual(response.body, requestBody); }', {
+        framework: 'node-test',
+        type: 'api',
+        nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+      }),
+    );
+
+    expect(findings).toContain('API004');
+  });
+
+  it('retains negation metadata for an API request-echo comparison', () => {
+    const test = testCase(
+      '{ expect(response.body).not.toEqual(requestBody); }',
+      { type: 'api' },
+    );
+
+    expect(
+      assertions(
+        sourceFileFor(test),
+        test.framework,
+        test.nativeAssertionBindings,
+        test.expectBindings,
+      ),
+    ).toMatchObject([{ isNegated: true, matcherName: 'toEqual' }]);
+  });
+
+  it('applies comparison and existence API rules to Node native assertions', () => {
+    const bindings = [{ localName: 'assert', kind: 'namespace' as const }];
+    const nativeApiIds = (body: string): string[] =>
+      ids(
+        testCase(body, {
+          framework: 'node-test',
+          type: 'api',
+          nativeAssertionBindings: bindings,
+        }),
+      );
+
+    expect(nativeApiIds('{ assert.ok(response.body); }')).toContain('API002');
+    expect(nativeApiIds('{ assert.ok(response); }')).toContain('API003');
+    expect(nativeApiIds('{ assert.ok(response.headers); }')).toContain(
+      'API006',
+    );
+    expect(
+      nativeApiIds(
+        "{ assert.strictEqual(response.headers.get('content-type'), 'application/json'); }",
+      ),
+    ).toContain('API007');
+    expect(
+      nativeApiIds(
+        "{ assert.strictEqual(response.request.method(), 'POST'); }",
+      ),
+    ).toContain('API008');
+    expect(
+      nativeApiIds('{ assert.deepStrictEqual(response.body, {}); }'),
+    ).toContain('API009');
+    expect(
+      nativeApiIds('{ assert.notStrictEqual(response.body.length, 0); }'),
+    ).not.toContain('API009');
+  });
+
   it('reports API005 for body property-presence-only assertions', () => {
     expect(
       ids(
@@ -306,6 +706,13 @@ describe('evaluateRules', () => {
             type: 'api',
           },
         ),
+      ),
+    ).not.toContain('API005');
+    expect(
+      ids(
+        testCase("{ expect(response.body).not.toHaveProperty('debug'); }", {
+          type: 'api',
+        }),
       ),
     ).not.toContain('API005');
   });
@@ -402,6 +809,16 @@ describe('evaluateRules', () => {
     ).not.toContain('API009');
   });
 
+  it('does not report API009 when a response length is asserted to be nonzero', () => {
+    expect(
+      ids(
+        testCase('{\n  expect(response.body.length).not.toBe(0);\n}', {
+          type: 'api',
+        }),
+      ),
+    ).not.toContain('API009');
+  });
+
   it('reports API010 when an API request error is swallowed', () => {
     expect(
       ids(
@@ -458,6 +875,18 @@ describe('evaluateRules', () => {
     ).toContain('E2E001');
   });
 
+  it('sees Playwright assertions inside recognized array callbacks', () => {
+    const findings = ids(
+      testCase('{ [item].find((item) => expect(item).toBeVisible()); }', {
+        framework: 'playwright',
+        type: 'e2e',
+      }),
+    );
+
+    expect(findings).not.toContain('E2E001');
+    expect(findings).toContain('E2E003');
+  });
+
   it('reports E2E004 for a numeric Playwright waitForTimeout but not a variable timeout', () => {
     expect(
       ids(
@@ -500,6 +929,54 @@ describe('evaluateRules', () => {
         ),
       ),
     ).not.toContain('E2E005');
+  });
+
+  it('recognizes class and id selectors inside compound CSS selectors', () => {
+    const findings = evaluateRules(
+      testCase(
+        `{
+  page.locator('button.checkout-primary');
+  page.locator('main#app');
+  page.locator('[data-testid="foo.bar"]');
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).filter((finding) => finding.ruleId === 'E2E005');
+
+    expect(findings).toHaveLength(2);
+  });
+
+  it('recognizes engine-prefixed XPath and CSS tag selectors', () => {
+    const findings = evaluateRules(
+      testCase(
+        `{
+  page.locator('xpath=//main/div');
+  page.locator('css=button');
+  page.locator('text=Continue');
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).filter((finding) => finding.ruleId === 'E2E005');
+
+    expect(findings).toHaveLength(2);
+  });
+
+  it('ignores selectors and assertions inside an uncalled helper', () => {
+    const findings = ids(
+      testCase(
+        `{
+  function unusedJourney() {
+    page.locator('.unstable');
+    expect(page).toHaveURL('/checkout');
+  }
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    );
+
+    expect(findings).toContain('E2E001');
+    expect(findings).not.toContain('E2E002');
+    expect(findings).not.toContain('E2E005');
   });
 
   it('reports E2E006 when a Playwright error is swallowed', () => {
@@ -562,6 +1039,14 @@ describe('evaluateRules', () => {
     ).toContain('E2E008');
     expect(
       ids(
+        testCase("{ void expect(page.getByRole('heading')).toBeVisible(); }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).toContain('E2E008');
+    expect(
+      ids(
         testCase("{ await expect(page.getByRole('heading')).toBeVisible(); }", {
           framework: 'playwright',
           type: 'e2e',
@@ -576,6 +1061,48 @@ describe('evaluateRules', () => {
         ),
       ),
     ).not.toContain('E2E008');
+  });
+
+  it('recognizes unawaited Playwright async matchers and leaves sync matchers alone', () => {
+    const asyncMatcherFindings = ids(
+      testCase(
+        '{\n  expect(response).toBeOK();\n  expect(page.getByRole("status")).toContainClass("ready");\n  expect(page).toMatchAriaSnapshot("- main");\n  expect(async () => {}).toPass();\n}',
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    );
+    const syncMatcherFindings = ids(
+      testCase("{\n  expect(page.url()).toBe('/checkout');\n}", {
+        framework: 'playwright',
+        type: 'e2e',
+      }),
+    );
+
+    expect(asyncMatcherFindings.filter((id) => id === 'E2E008')).toHaveLength(
+      4,
+    );
+    expect(syncMatcherFindings).not.toContain('E2E008');
+  });
+
+  it('inspects async matchers inside a Playwright toPass callback', () => {
+    const findings = ids(
+      testCase(
+        "{ await expect(async () => { expect(page.getByRole('heading')).toBeVisible(); }).toPass(); }",
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    );
+
+    expect(findings).toContain('E2E008');
+  });
+
+  it('inspects async matchers inside a recognized Playwright expect.poll callback', () => {
+    const findings = ids(
+      testCase(
+        "{ await expect.poll(() => { expect(page.getByRole('heading')).toBeVisible(); return page.url(); }).toBe('/checkout'); }",
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    );
+
+    expect(findings).toContain('E2E008');
   });
 
   it('reports E2E009 for explicit page actions without await', () => {
@@ -595,6 +1122,46 @@ describe('evaluateRules', () => {
         }),
       ),
     ).not.toContain('E2E009');
+    expect(
+      ids(
+        testCase(
+          "{ const pending = page.click('#submit'); await expect(page.getByText('saved')).toBeVisible(); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).toContain('E2E009');
+    expect(
+      ids(
+        testCase("{ const pending = page.click('#submit'); await pending; }", {
+          framework: 'playwright',
+          type: 'e2e',
+        }),
+      ),
+    ).not.toContain('E2E009');
+    expect(
+      ids(
+        testCase(
+          "{ const pending = page.click('#submit'); function unrelated(pending) { return pending; } unrelated('value'); await expect(page.getByText('saved')).toBeVisible(); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).toContain('E2E009');
+    expect(
+      ids(
+        testCase(
+          "{ const pending = page.click('#submit'); function consume() { return pending; } consume(); await expect(page.getByText('saved')).toBeVisible(); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).not.toContain('E2E009');
+    expect(
+      ids(
+        testCase(
+          "{ let pending = page.click('#submit'); pending = undefined; await expect(page.getByText('saved')).toBeVisible(); }",
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ),
+    ).toContain('E2E009');
   });
 
   it('reports E2E010 for empty text or attribute assertions only', () => {
@@ -620,6 +1187,16 @@ describe('evaluateRules', () => {
         ),
       ),
     ).not.toContain('E2E010');
+  });
+
+  it('does not report E2E010 for negated empty text or attribute assertions', () => {
+    const test = testCase(
+      "{\n  await expect(page.getByRole('status')).not.toHaveText('');\n  await expect(page.getByRole('status')).not.toHaveAttribute('aria-label', '');\n}",
+      { framework: 'playwright', type: 'e2e' },
+    );
+
+    expect(ids(test)).not.toContain('E2E010');
+    expect(ids(test)).not.toContain('E2E001');
   });
 
   it('keeps API and E2E findings weak high-confidence warnings', () => {

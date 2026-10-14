@@ -42,6 +42,116 @@
         { "ruleId": "E2E010", "classification": "WEAK" }
       ],
       "nonTriggers": ["E2E001", "E2E002", "E2E003", "E2E004"]
+    },
+    {
+      "id": "v1-unit-matcher-contract",
+      "sourcePath": "v1/unit-matcher-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [
+        { "ruleId": "UT002", "classification": "FAKE" },
+        { "ruleId": "UT003", "classification": "WEAK" },
+        { "ruleId": "UT011", "classification": "WEAK" },
+        { "ruleId": "UT014", "classification": "WEAK" }
+      ],
+      "nonTriggers": ["UT001", "UT004", "UT008", "UT012", "UT013", "UT015"]
+    },
+    {
+      "id": "v1-unit-property-read-boundary",
+      "sourcePath": "v1/unit-property-read-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [{ "ruleId": "UT003", "classification": "WEAK" }],
+      "nonTriggers": ["UT001", "UT002", "UT004", "UT008", "UT011"]
+    },
+    {
+      "id": "v1-unit-coercion-boundary",
+      "sourcePath": "v1/unit-coercion-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [{ "ruleId": "UT003", "classification": "WEAK" }],
+      "nonTriggers": ["UT001", "UT002", "UT004", "UT008", "UT011"]
+    },
+    {
+      "id": "v1-unit-fresh-identity-boundary",
+      "sourcePath": "v1/unit-fresh-identity-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [{ "ruleId": "UT003", "classification": "WEAK" }],
+      "nonTriggers": ["UT001", "UT002", "UT004", "UT008", "UT011"]
+    },
+    {
+      "id": "v1-api-matcher-contract",
+      "sourcePath": "v1/api-matcher-contract.test.ts",
+      "type": "api",
+      "expectedFindings": [{ "ruleId": "API002", "classification": "WEAK" }],
+      "nonTriggers": [
+        "API001",
+        "API003",
+        "API004",
+        "API005",
+        "API006",
+        "API007",
+        "API008",
+        "API009",
+        "API010"
+      ]
+    },
+    {
+      "id": "v1-api-node-assert-contract",
+      "sourcePath": "v1/api-node-assert-contract.test.ts",
+      "type": "api",
+      "expectedFindings": [{ "ruleId": "API004", "classification": "WEAK" }],
+      "nonTriggers": [
+        "API001",
+        "API002",
+        "API003",
+        "API005",
+        "API006",
+        "API007",
+        "API008",
+        "API009",
+        "API010"
+      ]
+    },
+    {
+      "id": "v1-node-promise-catch-boundary",
+      "sourcePath": "v1/node-promise-catch-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [],
+      "nonTriggers": ["UT001"]
+    },
+    {
+      "id": "v1-e2e-matcher-contract",
+      "sourcePath": "v1/e2e-matcher-contract.e2e.ts",
+      "type": "e2e",
+      "expectedFindings": [
+        { "ruleId": "E2E008", "classification": "FAKE" },
+        { "ruleId": "E2E009", "classification": "WEAK" }
+      ],
+      "nonTriggers": [
+        "E2E001",
+        "E2E002",
+        "E2E003",
+        "E2E004",
+        "E2E005",
+        "E2E006",
+        "E2E007",
+        "E2E010"
+      ]
+    },
+    {
+      "id": "v1-named-callback-contract",
+      "sourcePath": "v1/named-callback-contract.test.ts",
+      "type": "unit",
+      "expectedFindings": [{ "ruleId": "UT002", "classification": "FAKE" }],
+      "nonTriggers": [
+        "UT001",
+        "UT003",
+        "UT004",
+        "UT008",
+        "UT011",
+        "UT012",
+        "UT013",
+        "UT014",
+        "UT015"
+      ]
     }
   ]
 }

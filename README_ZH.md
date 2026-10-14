@@ -14,7 +14,7 @@ AI Test Auditor 是本地优先、纯源码审计的 JavaScript 与 TypeScript �
 
 ## 核心能力与明确限制
 
-它提取直接定义的 Jest、Vitest、Playwright 和 Node `node:test` 回调；Node 测试可以将可识别的 `node:assert` 调用作为断言。工具输出带位置与修复建议的 `FAKE` 或 `WEAK` 发现项，并支持变更文件选择、可选 mutation 证据、建议性策略、基线比较、建议性决策投影和显式 opt-in 策略门禁。
+它提取直接定义的 Jest、Vitest、Playwright 和 Node `node:test` 回调，也识别受支持框架的别名及各框架适用的 `.skip`、`.only`、`.concurrent`、`.failing`/`.fails`、Playwright `.fail`/`.fixme`、`.each`、`.skipIf` 和 `.runIf` 注册形式。测试回调可以引用同一文件中直接声明的函数或由函数表达式初始化的变量；导入函数、任意别名、被遮蔽的名称或存在静态写入的绑定不会被跟踪。Jest、Vitest 和 Playwright 的 matcher 识别支持静态导入的 `expect` 别名，以及通过 `@jest/globals`、`vitest` 或 `@playwright/test` 的字面量 CommonJS 解构取得的别名；可识别 `.not`、`.resolves` 和 `.rejects` 链式 matcher，也识别 Vitest 与 Playwright 的 `expect.soft`/`expect.poll`。只有简单 polling 回调的返回表达式会传给规则检查。规则遍历会跳过未调用的嵌套函数并跟踪直接调用的本地 helper；Promise callback 仅在 primitive 字面量 `Promise.resolve`/`Promise.reject` 链被测试回调 await 或 return 时计入，同时识别受支持 `expect.poll` 与 Playwright `expect(callback).toPass()` callback，以及直接 Array 字面量上能静态保证至少执行一次的部分 callback。接收者不透明的 callback 和 Array `sort`/`toSorted` 不会被假定为已执行。源码中可见的局部遮蔽和被重新赋值的 CommonJS 别名不会被计入。Node 测试可以通过静态声明的 value import（包括 `node:assert` 的命名 `strict` 导出）或字面量 CommonJS `require()` 绑定使用可识别的比较、`assert()` 和 `assert.ok()` 调用。若源码中能静态看到原生断言绑定被重新赋值，或 namespace 方法被直接替换，就不会把它当作原生断言。工具输出带位置与修复建议的 `FAKE` 或 `WEAK` 发现项，并支持变更文件选择、可选 mutation 证据、建议性策略、基线比较、建议性决策投影和显式 opt-in 策略门禁。
 
 它不运行测试、不检查运行时行为、不调用 LLM、不计算覆盖率，也不推断生产代码与测试关系。未命中规则的测试是 `UNASSESSED`，不是 `STRONG`。FTR 和 Trust Score 只是排序辅助，不是发布结论。
 
@@ -58,7 +58,7 @@ npm run benchmark
 `--output` 支持 text、json、html。HTML 未指定 `--output` 时默认写入当前目录的 `audit.html`，使用 `--locale zh-CN` 时默认写入 `audit-zh.html`；text 与 JSON 继续写入标准输出。`--locale zh-CN` 本地化 text 与 HTML；不输入时为 `en`。JSON 保持稳定 schema 与英文消息。
 HTML 写入报告时标准输出保持干净；如需在命令行获取绝对路径，可追加 `--print-output-path`，路径会输出到标准错误。
 
-v1.2 benchmark manifest 覆盖 10 条 Unit 规则、10 条 API 规则和 10 条 E2E 规则。`ata benchmark [manifest]` 通过静态审计管线读取 fixture 源码，比对精确的 rule/classification 身份并报告 fixture 一致性；它绝不 import 或执行 fixture。benchmark 输入格式无效返回 `2`，有效 manifest 但结果不一致返回 `1`。
+当前规则目录包含 10 条 Unit、10 条 API 和 10 条 E2E 规则。v1 benchmark manifest 包含 12 个代表性源码 fixture，用于检查这些规则目录。它覆盖 matcher 别名、modifier 链、有边界的 polling 返回值检查、同文件具名回调、Node 原生断言与 Promise 契约、属性/类型转换/新身份边界及 E2E action 结果作用域检查，但不等于逐规则代码覆盖率。`ata benchmark [manifest]` 通过静态审计管线读取 fixture 源码，比对精确的 rule/classification 身份并报告 fixture 一致性；它绝不 import 或执行 fixture。benchmark 输入格式无效返回 `2`，有效 manifest 但结果不一致返回 `1`。
 
 审计配置兼容没有 version 的旧 JSON，并将其规范化为 version `1`；未知字段、空的 include/exclude 模式和不支持的 semantic provider 都属于无效输入。`--locale en` 与 `--locale zh-CN` 只选择 text/HTML 语言，不改变 JSON schema。
 

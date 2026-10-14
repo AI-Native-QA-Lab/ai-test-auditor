@@ -1,8 +1,10 @@
 import * as ts from 'typescript';
+import { visitExecutableNodes } from './ast-traversal.js';
 import {
   isNodeComparisonMethod,
   nodeAssertionName,
 } from '../core/native-assertions.js';
+import { isShadowedAtNode } from '../core/scope-analysis.js';
 import type {
   Classification,
   Confidence,
@@ -18,6 +20,16 @@ export interface Assertion {
   readonly expected: ts.Expression | undefined;
   readonly actual: ts.Expression;
   readonly matcherName: string;
+  readonly isNegated: boolean;
+  readonly isPolled: boolean;
+  readonly pollResultKnown: boolean;
+  readonly hasPromiseModifier: boolean;
+}
+
+interface ExpectFactoryCall {
+  readonly actual: ts.Expression | undefined;
+  readonly isPolled: boolean;
+  readonly pollResultKnown: boolean;
 }
 
 export function sourceFileFor(testCase: TestCase): ts.SourceFile {
@@ -36,18 +48,6 @@ export function sourceFileFor(testCase: TestCase): ts.SourceFile {
   );
 }
 
-export function visitNodes(
-  sourceFile: ts.Node,
-  predicate: (node: ts.Node) => void,
-): void {
-  function visit(node: ts.Node): void {
-    predicate(node);
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-}
-
 export function lineFor(testCase: TestCase, node: ts.Node): number {
   const sourceFile = node.getSourceFile();
   return (
@@ -56,18 +56,39 @@ export function lineFor(testCase: TestCase, node: ts.Node): number {
   );
 }
 
-export function expectCalls(sourceFile: ts.SourceFile): ts.CallExpression[] {
+export function isExpectReference(
+  expression: ts.Expression,
+  expectBindings?: readonly string[],
+): boolean {
+  if (!ts.isIdentifier(expression)) return false;
+  const localName = expression.text;
+  return (
+    (expectBindings === undefined
+      ? localName === 'expect'
+      : expectBindings.includes(localName)) &&
+    !isShadowedAtNode(expression, localName)
+  );
+}
+
+export function expectCalls(
+  sourceFile: ts.SourceFile,
+  expectBindings?: readonly string[],
+  framework?: Framework,
+): ts.CallExpression[] {
   const calls: ts.CallExpression[] = [];
 
-  visitNodes(sourceFile, (node) => {
-    if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 'expect'
-    ) {
-      calls.push(node);
-    }
-  });
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        expectFactoryCall(node, expectBindings, framework)
+      ) {
+        calls.push(node);
+      }
+    },
+    { expectBindings, framework },
+  );
 
   return calls;
 }
@@ -80,17 +101,23 @@ export function nativeAssertionCalls(
   if (framework !== 'node-test') return [];
 
   const calls: ts.CallExpression[] = [];
-  visitNodes(sourceFile, (node) => {
-    if (!ts.isCallExpression(node)) return;
-    if (nodeAssertionName(node, bindings)) calls.push(node);
-  });
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (!ts.isCallExpression(node)) return;
+      if (nodeAssertionName(node, bindings)) calls.push(node);
+    },
+    { framework },
+  );
   return calls;
 }
 
 export function bareExpectCalls(
   sourceFile: ts.SourceFile,
+  expectBindings?: readonly string[],
+  framework?: Framework,
 ): ts.CallExpression[] {
-  return expectCalls(sourceFile).filter((call) => {
+  return expectCalls(sourceFile, expectBindings, framework).filter((call) => {
     const parent = call.parent;
     return !(
       ts.isPropertyAccessExpression(parent) && parent.expression === call
@@ -100,25 +127,29 @@ export function bareExpectCalls(
 
 export function assertionCountGuards(
   sourceFile: ts.SourceFile,
+  expectBindings?: readonly string[],
 ): ts.CallExpression[] {
   const guards: ts.CallExpression[] = [];
-  visitNodes(sourceFile, (node) => {
-    if (
-      !ts.isCallExpression(node) ||
-      !ts.isPropertyAccessExpression(node.expression) ||
-      !ts.isIdentifier(node.expression.expression) ||
-      node.expression.expression.text !== 'expect'
-    ) {
-      return;
-    }
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (
+        !ts.isCallExpression(node) ||
+        !ts.isPropertyAccessExpression(node.expression) ||
+        !isExpectReference(node.expression.expression, expectBindings)
+      ) {
+        return;
+      }
 
-    if (
-      node.expression.name.text === 'assertions' ||
-      node.expression.name.text === 'hasAssertions'
-    ) {
-      guards.push(node);
-    }
-  });
+      if (
+        node.expression.name.text === 'assertions' ||
+        node.expression.name.text === 'hasAssertions'
+      ) {
+        guards.push(node);
+      }
+    },
+    { expectBindings },
+  );
   return guards;
 }
 
@@ -126,46 +157,67 @@ export function assertions(
   sourceFile: ts.SourceFile,
   framework: Framework = 'unknown',
   bindings: readonly NativeAssertionBinding[] = [],
+  expectBindings?: readonly string[],
 ): Assertion[] {
   const found: Assertion[] = [];
 
-  visitNodes(sourceFile, (node) => {
-    if (
-      !ts.isCallExpression(node) ||
-      !ts.isPropertyAccessExpression(node.expression)
-    ) {
-      return;
-    }
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (
+        !ts.isCallExpression(node) ||
+        !ts.isPropertyAccessExpression(node.expression)
+      ) {
+        return;
+      }
 
-    const expectedCall = node.expression.expression;
-    if (
-      !ts.isCallExpression(expectedCall) ||
-      !ts.isIdentifier(expectedCall.expression) ||
-      expectedCall.expression.text !== 'expect'
-    ) {
-      return;
-    }
-
-    const actual = expectedCall.arguments[0];
-    if (!actual) return;
-
-    found.push({
-      matcher: node,
-      expected: node.arguments[0],
-      actual,
-      matcherName: node.expression.name.text,
-    });
-  });
+      const assertion = expectAssertionForMatcher(
+        node,
+        expectBindings,
+        framework,
+      );
+      if (assertion) found.push(assertion);
+    },
+    { expectBindings, framework },
+  );
 
   for (const matcher of nativeAssertionCalls(sourceFile, framework, bindings)) {
     const matcherName = nodeAssertionName(matcher, bindings);
-    if (!matcherName || !isNodeComparisonMethod(matcherName)) continue;
+    if (!matcherName) continue;
+
+    if (
+      ['assert', 'ok'].includes(matcherName) &&
+      matcher.arguments.length === 1
+    ) {
+      found.push({
+        matcher,
+        expected: undefined,
+        actual: matcher.arguments[0]!,
+        matcherName,
+        isNegated: false,
+        isPolled: false,
+        pollResultKnown: false,
+        hasPromiseModifier: false,
+      });
+      continue;
+    }
+
+    if (!isNodeComparisonMethod(matcherName)) continue;
 
     const actual = matcher.arguments[0];
     const expected = matcher.arguments[1];
     if (!actual || !expected) continue;
 
-    found.push({ matcher, expected, actual, matcherName });
+    found.push({
+      matcher,
+      expected,
+      actual,
+      matcherName,
+      isNegated: false,
+      isPolled: false,
+      pollResultKnown: false,
+      hasPromiseModifier: false,
+    });
   }
 
   return found;
@@ -177,19 +229,23 @@ export function hasOnlyZeroArgumentMatchers(
   actualMatches: (actual: ts.Expression) => boolean = () => true,
   framework?: Framework,
   bindings?: readonly NativeAssertionBinding[],
+  expectBindings?: readonly string[],
 ): boolean {
   const direct = [
-    ...expectCalls(sourceFile),
+    ...expectCalls(sourceFile, expectBindings, framework),
     ...nativeAssertionCalls(sourceFile, framework, bindings),
   ];
-  const found = assertions(sourceFile, framework, bindings);
+  const found = assertions(sourceFile, framework, bindings, expectBindings);
   return (
     direct.length > 0 &&
     direct.length === found.length &&
     found.every(
       (assertion) =>
+        !assertion.isNegated &&
         matcherNames.includes(assertion.matcherName) &&
-        assertion.matcher.arguments.length === 0 &&
+        (['assert', 'ok'].includes(assertion.matcherName)
+          ? assertion.matcher.arguments.length === 1
+          : assertion.matcher.arguments.length === 0) &&
         actualMatches(assertion.actual),
     )
   );
@@ -200,17 +256,112 @@ export function hasOnlyMatchers(
   matcherNames: readonly string[],
   framework?: Framework,
   bindings?: readonly NativeAssertionBinding[],
+  expectBindings?: readonly string[],
 ): boolean {
   const direct = [
-    ...expectCalls(sourceFile),
+    ...expectCalls(sourceFile, expectBindings, framework),
     ...nativeAssertionCalls(sourceFile, framework, bindings),
   ];
-  const found = assertions(sourceFile, framework, bindings);
+  const found = assertions(sourceFile, framework, bindings, expectBindings);
   return (
     direct.length > 0 &&
     direct.length === found.length &&
     found.every((assertion) => matcherNames.includes(assertion.matcherName))
   );
+}
+
+export function expectAssertionForMatcher(
+  matcher: ts.CallExpression,
+  expectBindings?: readonly string[],
+  framework: Framework = 'unknown',
+): Assertion | undefined {
+  if (!ts.isPropertyAccessExpression(matcher.expression)) return undefined;
+
+  let expression = matcher.expression.expression;
+  let isNegated = false;
+  let hasPromiseModifier = false;
+  while (ts.isPropertyAccessExpression(expression)) {
+    if (expression.name.text === 'not') {
+      isNegated = true;
+    } else if (
+      expression.name.text === 'resolves' ||
+      expression.name.text === 'rejects'
+    ) {
+      hasPromiseModifier = true;
+    } else {
+      return undefined;
+    }
+    expression = expression.expression;
+  }
+
+  if (!ts.isCallExpression(expression)) return undefined;
+  const factory = expectFactoryCall(expression, expectBindings, framework);
+  if (!factory || !factory.actual) return undefined;
+
+  return {
+    matcher,
+    expected: matcher.arguments[0],
+    actual: factory.actual,
+    matcherName: matcher.expression.name.text,
+    isNegated,
+    isPolled: factory.isPolled,
+    pollResultKnown: factory.pollResultKnown,
+    hasPromiseModifier,
+  };
+}
+
+function expectFactoryCall(
+  call: ts.CallExpression,
+  expectBindings: readonly string[] | undefined,
+  framework: Framework | undefined,
+): ExpectFactoryCall | undefined {
+  const actual = call.arguments[0];
+  if (isExpectReference(call.expression, expectBindings)) {
+    return { actual, isPolled: false, pollResultKnown: false };
+  }
+
+  if (framework !== 'vitest' && framework !== 'playwright') return undefined;
+  let callee = call.expression;
+  let isExpectFactory = false;
+  let isPolled = false;
+  while (ts.isPropertyAccessExpression(callee)) {
+    if (callee.name.text === 'soft' || callee.name.text === 'poll') {
+      isExpectFactory = true;
+      if (callee.name.text === 'poll') isPolled = true;
+      callee = callee.expression;
+    } else {
+      return undefined;
+    }
+  }
+
+  if (!isExpectFactory || !isExpectReference(callee, expectBindings)) {
+    return undefined;
+  }
+
+  const pollResult =
+    isPolled && actual ? pollingResultExpression(actual) : undefined;
+  return {
+    actual: pollResult?.expression ?? actual,
+    isPolled,
+    pollResultKnown: pollResult !== undefined,
+  };
+}
+
+function pollingResultExpression(
+  callback: ts.Expression,
+): { readonly expression: ts.Expression } | undefined {
+  if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) {
+    return undefined;
+  }
+  if (!ts.isBlock(callback.body)) return { expression: callback.body };
+  if (
+    callback.body.statements.length === 1 &&
+    ts.isReturnStatement(callback.body.statements[0]!) &&
+    callback.body.statements[0]!.expression
+  ) {
+    return { expression: callback.body.statements[0]!.expression };
+  }
+  return undefined;
 }
 
 export function isSimpleLiteral(expression: ts.Expression): boolean {

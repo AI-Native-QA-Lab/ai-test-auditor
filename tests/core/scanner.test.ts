@@ -25,6 +25,7 @@ async function createSourceTree(): Promise<string> {
   await Promise.all([
     mkdir(join(root, 'nested'), { recursive: true }),
     mkdir(join(root, 'node_modules', 'package'), { recursive: true }),
+    mkdir(join(root, '.worktrees', 'checkout'), { recursive: true }),
     mkdir(join(root, 'dist'), { recursive: true }),
     mkdir(join(root, '.git'), { recursive: true }),
     mkdir(join(root, 'coverage'), { recursive: true }),
@@ -39,6 +40,7 @@ async function createSourceTree(): Promise<string> {
     writeFile(join(root, 'nested', 'journey.e2e.ts'), ''),
     writeFile(join(root, 'nested', 'helper.ts'), ''),
     writeFile(join(root, 'node_modules', 'package', 'ignored.test.ts'), ''),
+    writeFile(join(root, '.worktrees', 'checkout', 'ignored.test.ts'), ''),
     writeFile(join(root, 'dist', 'ignored.spec.js'), ''),
     writeFile(join(root, '.git', 'ignored.test.ts'), ''),
     writeFile(join(root, 'coverage', 'ignored.e2e.ts'), ''),

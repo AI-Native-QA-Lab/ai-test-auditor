@@ -29,8 +29,11 @@ export interface TestCase {
   readonly line: number;
   readonly source: string;
   readonly body: string;
+  readonly expectBindings?: readonly string[];
   readonly nativeAssertionBindings?: readonly NativeAssertionBinding[];
 }
+
+export type AuditTestCase = Omit<TestCase, 'expectBindings'>;
 
 export interface ParserDiagnostic {
   readonly filePath: string;
@@ -137,7 +140,7 @@ export interface DecisionBaselineContext {
 export interface DecisionEnvelope {
   readonly version: '1';
   readonly audit: {
-    readonly tests: readonly TestCase[];
+    readonly tests: readonly AuditTestCase[];
     readonly findings: readonly Finding[];
     readonly summary: AuditSummary;
     readonly policy?: DecisionPolicyContext;
@@ -168,7 +171,7 @@ export interface GateResult {
 }
 
 export interface AuditResult {
-  readonly tests: readonly TestCase[];
+  readonly tests: readonly AuditTestCase[];
   readonly findings: readonly Finding[];
   readonly diagnostics?: readonly ParserDiagnostic[];
   readonly semantic?: import('./semantic.js').SemanticReport;
