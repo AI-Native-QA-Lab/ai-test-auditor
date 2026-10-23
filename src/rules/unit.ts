@@ -8,6 +8,7 @@ import {
   expectCalls,
   hasOnlyMatchers,
   hasOnlyZeroArgumentMatchers,
+  hasRecognizedAssertionCall,
   finding,
   isSimpleLiteral,
   isExpectReference,
@@ -32,32 +33,59 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   const findings: Finding[] = [];
   const nativeBindings = testCase.nativeAssertionBindings ?? [];
   const expectBindings = testCase.expectBindings;
+  const rootCallbackStart = testCase.analysisContext?.callbackStart;
   const testAssertions = assertions(
     sourceFile,
     testCase.framework,
     nativeBindings,
     expectBindings,
+    rootCallbackStart,
   );
 
   if (
-    expectCalls(sourceFile, expectBindings, testCase.framework).length === 0 &&
-    nativeAssertionCalls(sourceFile, testCase.framework, nativeBindings)
-      .length === 0
+    expectCalls(
+      sourceFile,
+      expectBindings,
+      testCase.framework,
+      rootCallbackStart,
+    ).length === 0 &&
+    nativeAssertionCalls(
+      sourceFile,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
+    ).length === 0
   ) {
+    const possibleAssertion = visitExecutableNodes(sourceFile, () => {}, {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    }).some((callback) =>
+      hasRecognizedAssertionCall(
+        callback,
+        testCase.framework,
+        nativeBindings,
+        expectBindings,
+      ),
+    );
     findings.push(
       finding(
         testCase,
         sourceFile,
         'UT001',
-        'FAKE',
-        'CRITICAL',
-        'HIGH',
-        fakeMessage(
-          'UT001 found no recognized expect or Node native assert call in this test.',
-        ),
-        fakeRemediation(
-          'Add an assertion for an observable behavior or side effect.',
-        ),
+        possibleAssertion ? 'WEAK' : 'FAKE',
+        possibleAssertion ? 'WARNING' : 'CRITICAL',
+        possibleAssertion ? 'MEDIUM' : 'HIGH',
+        possibleAssertion
+          ? 'UT001 found a recognized expect or Node native assert call only inside a callback for an opaque collection receiver. Static analysis cannot prove that the callback runs.'
+          : fakeMessage(
+              'UT001 found no recognized expect or Node native assert call in this test.',
+            ),
+        possibleAssertion
+          ? 'Make the callback execution explicit or establish a non-empty input before relying on its assertion. Static analysis cannot determine the receiver contents.'
+          : fakeRemediation(
+              'Add an assertion for an observable behavior or side effect.',
+            ),
       ),
     );
   }
@@ -66,6 +94,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     sourceFile,
     expectBindings,
     testCase.framework,
+    rootCallbackStart,
   )[0];
   if (bareExpect) {
     findings.push(
@@ -87,6 +116,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   const zeroAssertionGuard = assertionCountGuards(
     sourceFile,
     expectBindings,
+    rootCallbackStart,
   ).find(
     (guard) =>
       ts.isPropertyAccessExpression(guard.expression) &&
@@ -128,6 +158,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -155,6 +186,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -183,6 +215,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -319,7 +352,11 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
         ),
       );
     },
-    { expectBindings, framework: testCase.framework },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
   );
 
   return findings;

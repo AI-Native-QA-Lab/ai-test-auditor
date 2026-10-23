@@ -6,6 +6,8 @@ This Skill mirrors the current CLI scope. It can cite all 31 catalog IDs: UT001â
 
 The v1.2 additions remain source-only and bounded: request echoes, metadata-only API checks, empty results, unstable selectors, swallowed Playwright errors, conditional assertions, direct unawaited matchers, unawaited page actions (including an action promise assigned to a local with no read reference), and empty UI values are not runtime conclusions. For UT003, fresh array/object/function/class/RegExp/JSX identities are context-dependent and remain `WEAK`. `ata benchmark` compares versioned fixture `expectedFindings` and `nonTriggers`; benchmark conformance is not execution evidence.
 
+For UT001/E2E001, an assertion inside a callback for an opaque collection receiver is uncertain evidence and should be `WEAK`, not `FAKE`. The CLI follows imported default/namespace `fast-check` bindings only for `fc.assert(fc.property(..., callback))` when a positive run count is statically established. Same-file helpers declared in an enclosing suite count only when the current test directly calls them; sibling test callbacks remain isolated.
+
 | Classification  | Use only when                                                                                                                                                       |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `FAKE`          | A documented deterministic false-confidence syntax pattern is visible.                                                                                              |

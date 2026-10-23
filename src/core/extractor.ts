@@ -201,6 +201,10 @@ export function extractTestsWithDiagnostics(
             ? { nativeAssertionBindings: scopedNativeAssertionBindings }
             : {}),
           expectBindings: scopedExpectBindings,
+          analysisContext: {
+            source: sourceFile.text,
+            callbackStart: callback.getStart(sourceFile),
+          },
         });
       }
 

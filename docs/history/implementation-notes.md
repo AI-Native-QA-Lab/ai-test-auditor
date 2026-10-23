@@ -241,3 +241,13 @@ RED/GREEN：为重复属性/下标读取、类型转换、新建身份和只写�
 验证：`npm test` 通过 23 个文件、355 个测试；lint、typecheck、build 通过；benchmark 通过 12/12。构建后 `node dist/cli.js review benchmarks --format json` 审计 44 个 callback，得到 13 个 `FAKE`、17 个 `WEAK`、14 个 `UNASSESSED`、0 个 `INVALID`；退出码 `1` 是 fixture 含静态 findings 的预期语义，输出未包含内部 `expectBindings`。`git diff --check` 通过。全仓 `npm run format:check` 只因 `.impeccable/hook.cache.json` 格式问题退出 `1`；`git check-ignore -v` 确认其由本地 `.git/info/exclude` 忽略，未修改缓存；变更文件的 Prettier 检查通过。
 
 边界：规则只判断源码中可见的表达式结构与变量读取；不会执行用户代码或推断页面 action 的运行时调度。`WEAK` 是风险提示，不表示断言必然失败或页面 action 必然竞态；未命中仍为 `UNASSESSED`。
+
+## 2026-10-23 测试 callback 误报复核与降级
+
+对 `naodeng.com.cn/tests` 的源码审计与代码复核发现三类既有边界问题：UT001 未跟进已导入 `fast-check` 的 `fc.assert(fc.property(...))` callback；E2E001 未识别当前测试直接调用的外层 suite helper；断言只在接收者不透明的 `.forEach` callback 中时仍被报为确定的 `FAKE`。补充完整源文件与当前测试 callback 的内部分析上下文，以便按精确回调边界分析并解析同文件外层 helper；公开审计结果继续剥离该内部上下文。`fast-check` 只识别静态 default/namespace import、对应 `assert(property(...))` 形态和可确定的正运行次数；不透明集合 callback 不视为已执行，若其内部（包括嵌套集合 callback）有唯一断言，则 UT001/E2E001 降为 `WEAK`。进一步修复完整源文件分析下 E2E007 将测试外层条件注册当作 journey 内条件的误报；测试内部条件仍触发规则。
+
+RED/GREEN：先新增 `fast-check`、不透明 `.forEach`、外层 suite 已调用/未调用 helper 回归；`npx vitest run tests/core/audit.test.ts` 在实现前观察到 3 项预期失败。之后为测试外层条件注册新增回归，先观察到错误的 E2E007；为嵌套不透明集合回调增加回归，先观察到 UT001 仍被错误标为 `FAKE`。边界修复后，`npx vitest run tests/core/audit.test.ts tests/core/rule-engine.test.ts tests/core/extractor.test.ts` 通过 3 个文件、182 项。
+
+验证：`npm test` 通过 23 个文件、366 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮全部变更文件的 Prettier 检查和 `git diff --check` 通过。全仓 `npm run format:check` 只因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，该缓存未修改。构建后 benchmark CLI 审计 44 个回调，得到 13 个 `FAKE`、17 个 `WEAK`、14 个 `UNASSESSED`，36 个 finding；退出码 1 是 benchmark fixture 存在静态发现项的预期行为。重新静态审计目标仓库的 563 个测试回调后得到 1 个 `FAKE`、304 个 `WEAK`、258 个 `UNASSESSED`，其中无 E2E001；6 个 UT001 都为 WEAK。仅余的 E2E006 位于 `toc.spec.ts`：空 catch 吞掉 Playwright 执行错误，后续 `expect(true).toBe(true)` 不能验证旅程结果，按当前规则边界仍属合理确定性 finding。E2E005 新增的 23 个 finding 对应被当前测试调用的外层 helper 中 class/tag selector，均保持 WEAK；E2E007 回到 37 项，未把条件测试注册算成条件断言。
+
+边界：目标仓库只做静态源码审计，没有执行它的测试；这些分类不证明运行时结果、覆盖率或质量。未命中的测试仍为 `UNASSESSED`，`Trust Score` 也不是质量结论。原有路线图和 API 场景追溯草案保持原样并继续保留在工作区。

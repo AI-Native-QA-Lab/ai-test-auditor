@@ -48,8 +48,13 @@ export function auditTestCases(tests: readonly TestCase[]): AuditResult {
 }
 
 function publicAuditTestCase(testCase: TestCase): AuditTestCase {
-  const { expectBindings: _expectBindings, ...publicTestCase } = testCase;
+  const {
+    expectBindings: _expectBindings,
+    analysisContext: _analysisContext,
+    ...publicTestCase
+  } = testCase;
   void _expectBindings;
+  void _analysisContext;
   return publicTestCase;
 }
 

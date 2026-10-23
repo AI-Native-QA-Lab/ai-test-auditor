@@ -21,6 +21,11 @@ export type NativeAssertionBinding =
       readonly methodName: string;
     };
 
+export interface TestAnalysisContext {
+  readonly source: string;
+  readonly callbackStart: number;
+}
+
 export interface TestCase {
   readonly filePath: string;
   readonly name: string;
@@ -31,9 +36,13 @@ export interface TestCase {
   readonly body: string;
   readonly expectBindings?: readonly string[];
   readonly nativeAssertionBindings?: readonly NativeAssertionBinding[];
+  readonly analysisContext?: TestAnalysisContext;
 }
 
-export type AuditTestCase = Omit<TestCase, 'expectBindings'>;
+export type AuditTestCase = Omit<
+  TestCase,
+  'expectBindings' | 'analysisContext'
+>;
 
 export interface ParserDiagnostic {
   readonly filePath: string;

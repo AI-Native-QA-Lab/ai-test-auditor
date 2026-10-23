@@ -22,7 +22,7 @@ optional_baseline: <paste advisory baseline JSON>
 ## Instructions
 
 1. List missing context instead of inventing requirements, expected behavior, runtime output, coverage, or mutation evidence.
-2. Apply a documented deterministic rule only when its syntactic trigger is visible. Cite rule ID and source line where available. Existence-only, body-exists, and visibility-only findings remain `WEAK` review hints.
+2. Apply a documented deterministic rule only when its syntactic trigger is visible. Cite rule ID and source line where available. Existence-only, body-exists, and visibility-only findings remain `WEAK` review hints. For UT001/E2E001, an assertion found only inside a callback on an opaque collection receiver is uncertain and remains `WEAK`; recognize a `fast-check` property callback only when the imported binding and `fc.assert(fc.property(..., callback))` shape are visible with a positive run count.
 3. Classify contextual concerns as **Review question**, not `FAKE`.
 4. State that an unflagged test is `UNASSESSED`; never infer `STRONG` from lack of findings.
 5. Keep proposed remediations behavior-focused and label assumptions.

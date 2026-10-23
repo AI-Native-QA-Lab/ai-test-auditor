@@ -7,7 +7,7 @@ import {
 } from './scope-analysis.js';
 
 type InlineTestCallback = ts.ArrowFunction | ts.FunctionExpression;
-type TestCallback =
+export type TestCallback =
   | InlineTestCallback
   | (ts.FunctionDeclaration & {
       readonly body: ts.Block;
@@ -28,7 +28,7 @@ export function testCallbackFor(
   return undefined;
 }
 
-function resolveLocalCallback(
+export function resolveLocalCallback(
   name: string,
   useSite: ts.Node,
   sourceFile: ts.SourceFile,

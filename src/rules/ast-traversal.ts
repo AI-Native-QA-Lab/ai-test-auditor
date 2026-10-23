@@ -1,10 +1,11 @@
 import * as ts from 'typescript';
 import {
+  hasPotentialWriteInScope,
   hasFunctionScopedVar,
   hasTopLevelBinding,
-  hasPotentialWriteInScope,
   isShadowedAtNode,
 } from '../core/scope-analysis.js';
+import { resolveLocalCallback } from '../core/callback-resolution.js';
 import type { Framework } from '../core/types.js';
 
 type FunctionNode =
@@ -36,21 +37,40 @@ const PROMISE_CALLBACK_METHODS = new Set(['catch', 'finally', 'then']);
 interface ExecutableTraversalOptions {
   readonly expectBindings?: readonly string[];
   readonly framework?: Framework;
+  readonly rootCallbackStart?: number;
 }
 
 export function visitExecutableNodes(
   root: ts.Node,
   predicate: (node: ts.Node) => void,
   options: ExecutableTraversalOptions = {},
-): void {
-  const rootCallback = testCallbackIn(root);
+): ts.Node[] {
+  const rootCallback = testCallbackIn(root, options.rootCallbackStart);
+  if (options.rootCallbackStart !== undefined && !rootCallback) return [];
+  const traversalRoot = rootCallback ?? root;
   const reachableHelperCache = new WeakMap<
     ts.Node,
     ReadonlySet<FunctionNode>
   >();
+  const visitedFunctions = new Set<FunctionNode>();
+  const uncertainCallbacks: ts.Node[] = [];
 
   function visit(node: ts.Node): void {
+    if (isFunctionNode(node)) {
+      if (visitedFunctions.has(node)) return;
+      visitedFunctions.add(node);
+    }
     predicate(node);
+
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      const helper = resolveLocalCallback(
+        node.expression.text,
+        node,
+        node.getSourceFile(),
+      );
+      if (helper && helper !== rootCallback) visit(helper);
+    }
+
     ts.forEachChild(node, (child) => {
       if (
         isFunctionNode(child) &&
@@ -58,13 +78,15 @@ export function visitExecutableNodes(
         !isExecutableCallback(child, rootCallback, options) &&
         !isReachableLocalHelper(child, reachableHelperCache)
       ) {
+        if (isUncertainArrayCallback(child)) uncertainCallbacks.push(child);
         return;
       }
       visit(child);
     });
   }
 
-  visit(root);
+  visit(traversalRoot);
+  return uncertainCallbacks;
 }
 
 function isFunctionNode(node: ts.Node): node is FunctionNode {
@@ -79,8 +101,29 @@ function isFunctionNode(node: ts.Node): node is FunctionNode {
   );
 }
 
-function testCallbackIn(node: ts.Node): FunctionNode | undefined {
+function testCallbackIn(
+  node: ts.Node,
+  callbackStart?: number,
+): FunctionNode | undefined {
   if (ts.isSourceFile(node)) {
+    if (callbackStart !== undefined) {
+      const sourceFile = node;
+      let found: FunctionNode | undefined;
+      function findCallback(current: ts.Node): void {
+        if (found) return;
+        if (
+          isFunctionNode(current) &&
+          current.getStart(sourceFile) === callbackStart
+        ) {
+          found = current;
+          return;
+        }
+        ts.forEachChild(current, findCallback);
+      }
+      findCallback(node);
+      return found;
+    }
+
     for (const statement of node.statements) {
       const callback = firstFunctionLike(statement);
       if (callback) return callback;
@@ -129,6 +172,8 @@ function isExecutableCallback(
     return true;
   }
 
+  if (isFastCheckPropertyCallback(current)) return true;
+
   if (!ts.isPropertyAccessExpression(parent.expression)) return false;
 
   const methodName = parent.expression.name.text;
@@ -152,6 +197,137 @@ function isExecutableCallback(
   }
 
   return false;
+}
+
+function isFastCheckPropertyCallback(callback: ts.Node): boolean {
+  if (
+    (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) ||
+    !ts.isCallExpression(callback.parent) ||
+    callback.parent.arguments.at(-1) !== callback
+  ) {
+    return false;
+  }
+
+  const propertyCall = callback.parent;
+  if (
+    !ts.isPropertyAccessExpression(propertyCall.expression) ||
+    propertyCall.expression.name.text !== 'property' ||
+    !ts.isIdentifier(propertyCall.expression.expression)
+  ) {
+    return false;
+  }
+
+  const fastCheckName = propertyCall.expression.expression.text;
+  const assertCall = propertyCall.parent;
+  if (
+    !ts.isCallExpression(assertCall) ||
+    assertCall.arguments[0] !== propertyCall ||
+    !ts.isPropertyAccessExpression(assertCall.expression) ||
+    assertCall.expression.name.text !== 'assert' ||
+    !ts.isIdentifier(assertCall.expression.expression) ||
+    assertCall.expression.expression.text !== fastCheckName
+  ) {
+    return false;
+  }
+
+  const sourceFile = callback.getSourceFile();
+  if (
+    !isFastCheckImport(sourceFile, fastCheckName) ||
+    isShadowedAtNode(propertyCall.expression.expression, fastCheckName) ||
+    hasPotentialWriteInScope(sourceFile, fastCheckName, assertCall, assertCall)
+  ) {
+    return false;
+  }
+
+  return hasPositiveFastCheckRunCount(assertCall);
+}
+
+function isFastCheckImport(
+  sourceFile: ts.SourceFile,
+  localName: string,
+): boolean {
+  return sourceFile.statements.some((statement) => {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      statement.moduleSpecifier.text !== 'fast-check' ||
+      !statement.importClause ||
+      statement.importClause.isTypeOnly
+    ) {
+      return false;
+    }
+
+    const clause = statement.importClause;
+    return (
+      clause.name?.text === localName ||
+      (clause.namedBindings !== undefined &&
+        ts.isNamespaceImport(clause.namedBindings) &&
+        clause.namedBindings.name.text === localName)
+    );
+  });
+}
+
+function hasPositiveFastCheckRunCount(assertCall: ts.CallExpression): boolean {
+  if (assertCall.arguments.length === 1) return true;
+  if (assertCall.arguments.length !== 2) return false;
+
+  const options = unwrapExpression(assertCall.arguments[1]!);
+  if (!ts.isObjectLiteralExpression(options)) return false;
+
+  if (options.properties.some(ts.isSpreadAssignment)) return false;
+
+  const runCountProperties = options.properties.filter((property) => {
+    if (
+      !('name' in property) ||
+      !property.name ||
+      ts.isComputedPropertyName(property.name)
+    ) {
+      return false;
+    }
+    return staticPropertyName(property.name) === 'numRuns';
+  });
+  if (runCountProperties.length > 1) return false;
+  if (
+    options.properties.some(
+      (property) =>
+        'name' in property &&
+        property.name !== undefined &&
+        ts.isComputedPropertyName(property.name),
+    )
+  ) {
+    return false;
+  }
+  if (runCountProperties.length === 0) return true;
+
+  const property = runCountProperties[0];
+  if (!property || !ts.isPropertyAssignment(property)) return false;
+  const value = unwrapExpression(property.initializer);
+  if (!ts.isNumericLiteral(value)) return false;
+  const runCount = Number(value.text);
+  return Number.isSafeInteger(runCount) && runCount > 0;
+}
+
+function staticPropertyName(name: ts.PropertyName): string | undefined {
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) return name.text;
+  return undefined;
+}
+
+function isUncertainArrayCallback(callback: FunctionNode): boolean {
+  let current: ts.Node = callback;
+  while (ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  const call = current.parent;
+  if (
+    !ts.isCallExpression(call) ||
+    call.arguments[0] !== current ||
+    !ts.isPropertyAccessExpression(call.expression) ||
+    !ARRAY_CALLBACK_METHODS.has(call.expression.name.text)
+  ) {
+    return false;
+  }
+
+  const receiver = unwrapExpression(call.expression.expression);
+  if (!ts.isArrayLiteralExpression(receiver)) return true;
+  return receiver.elements.some((element) => !ts.isOmittedExpression(element));
 }
 
 function isGuaranteedArrayCallback(

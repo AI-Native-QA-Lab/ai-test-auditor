@@ -5,6 +5,7 @@ import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
   finding,
+  hasRecognizedMatcherAssertion,
   hasOnlyZeroArgumentMatchers,
   expectAssertionForMatcher,
   sourceFileFor,
@@ -16,24 +17,41 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
   const sourceFile = sourceFileFor(testCase);
   const findings: Finding[] = [];
   const expectBindings = testCase.expectBindings;
+  const rootCallbackStart = testCase.analysisContext?.callbackStart;
   const testAssertions = assertions(
     sourceFile,
     testCase.framework,
     testCase.nativeAssertionBindings,
     expectBindings,
+    rootCallbackStart,
   );
 
   if (testAssertions.length === 0) {
+    const possibleAssertion = visitExecutableNodes(sourceFile, () => {}, {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    }).some((callback) =>
+      hasRecognizedMatcherAssertion(
+        callback,
+        testCase.framework,
+        expectBindings,
+      ),
+    );
     findings.push(
       finding(
         testCase,
         sourceFile,
         'E2E001',
-        'FAKE',
-        'CRITICAL',
-        'HIGH',
-        'E2E001 found no expect assertion in this Playwright journey. Static analysis cannot prove that navigation or actions alone verify a user-visible outcome.',
-        'Add an assertion for an observable user-facing result or state change. Static analysis cannot determine whether every intended journey outcome is covered.',
+        possibleAssertion ? 'WEAK' : 'FAKE',
+        possibleAssertion ? 'WARNING' : 'CRITICAL',
+        possibleAssertion ? 'MEDIUM' : 'HIGH',
+        possibleAssertion
+          ? 'E2E001 found a recognized expect assertion only inside a callback for an opaque collection receiver. Static analysis cannot prove that the callback runs.'
+          : 'E2E001 found no expect assertion in this Playwright journey. Static analysis cannot prove that navigation or actions alone verify a user-visible outcome.',
+        possibleAssertion
+          ? 'Make the callback execution explicit or establish a non-empty input before relying on its assertion. Static analysis cannot determine the receiver contents.'
+          : 'Add an assertion for an observable user-facing result or state change. Static analysis cannot determine whether every intended journey outcome is covered.',
       ),
     );
   }
@@ -64,6 +82,7 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
       testCase.framework,
       testCase.nativeAssertionBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -132,7 +151,7 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
         ts.isCallExpression(node) &&
         isPlaywrightMatcher(node, expectBindings)
       ) {
-        if (hasConditionalAncestor(node)) {
+        if (hasConditionalAncestor(node, rootCallbackStart)) {
           findings.push(
             finding(
               testCase,
@@ -178,7 +197,11 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
         );
       }
     },
-    { expectBindings, framework: testCase.framework },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
   );
 
   if (testAssertions.length > 0 && testAssertions.every(isEmptyUiAssertion)) {
@@ -214,7 +237,11 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
         ),
       );
     },
-    { expectBindings, framework: testCase.framework },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
   );
 
   return findings;
@@ -323,9 +350,18 @@ function isPlaywrightMatcher(
   );
 }
 
-function hasConditionalAncestor(node: ts.Node): boolean {
+function hasConditionalAncestor(
+  node: ts.Node,
+  rootCallbackStart?: number,
+): boolean {
   let current: ts.Node | undefined = node.parent;
   while (current) {
+    if (rootCallbackStart !== undefined && ts.isFunctionLike(current)) {
+      if (current.getStart(node.getSourceFile()) === rootCallbackStart) {
+        return false;
+      }
+      if (!hasCallbackAncestor(current, rootCallbackStart)) return false;
+    }
     if (ts.isIfStatement(current) || ts.isConditionalExpression(current)) {
       return true;
     }
@@ -333,6 +369,20 @@ function hasConditionalAncestor(node: ts.Node): boolean {
       ts.isBinaryExpression(current) &&
       (current.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
         current.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+    ) {
+      return true;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+function hasCallbackAncestor(node: ts.Node, callbackStart: number): boolean {
+  let current: ts.Node | undefined = node.parent;
+  while (current) {
+    if (
+      ts.isFunctionLike(current) &&
+      current.getStart(node.getSourceFile()) === callbackStart
     ) {
       return true;
     }
@@ -411,7 +461,11 @@ function isAssignedAndUnused(
         referenced = true;
       }
     },
-    { expectBindings: testCase.expectBindings, framework: testCase.framework },
+    {
+      expectBindings: testCase.expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart: testCase.analysisContext?.callbackStart,
+    },
   );
   return !referenced;
 }

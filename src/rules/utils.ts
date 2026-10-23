@@ -33,6 +33,7 @@ interface ExpectFactoryCall {
 }
 
 export function sourceFileFor(testCase: TestCase): ts.SourceFile {
+  const source = testCase.analysisContext?.source ?? testCase.source;
   const scriptKind = testCase.filePath.endsWith('.tsx')
     ? ts.ScriptKind.TSX
     : testCase.filePath.endsWith('.js')
@@ -41,7 +42,7 @@ export function sourceFileFor(testCase: TestCase): ts.SourceFile {
 
   return ts.createSourceFile(
     testCase.filePath,
-    testCase.source,
+    source,
     ts.ScriptTarget.Latest,
     true,
     scriptKind,
@@ -50,6 +51,12 @@ export function sourceFileFor(testCase: TestCase): ts.SourceFile {
 
 export function lineFor(testCase: TestCase, node: ts.Node): number {
   const sourceFile = node.getSourceFile();
+  if (testCase.analysisContext) {
+    const position = ts.isSourceFile(node)
+      ? testCase.analysisContext.callbackStart
+      : node.getStart(sourceFile);
+    return sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  }
   return (
     testCase.line +
     sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line
@@ -74,6 +81,7 @@ export function expectCalls(
   sourceFile: ts.SourceFile,
   expectBindings?: readonly string[],
   framework?: Framework,
+  rootCallbackStart?: number,
 ): ts.CallExpression[] {
   const calls: ts.CallExpression[] = [];
 
@@ -87,7 +95,7 @@ export function expectCalls(
         calls.push(node);
       }
     },
-    { expectBindings, framework },
+    { expectBindings, framework, rootCallbackStart },
   );
 
   return calls;
@@ -97,6 +105,7 @@ export function nativeAssertionCalls(
   sourceFile: ts.SourceFile,
   framework: Framework = 'unknown',
   bindings: readonly NativeAssertionBinding[] = [],
+  rootCallbackStart?: number,
 ): ts.CallExpression[] {
   if (framework !== 'node-test') return [];
 
@@ -107,7 +116,7 @@ export function nativeAssertionCalls(
       if (!ts.isCallExpression(node)) return;
       if (nodeAssertionName(node, bindings)) calls.push(node);
     },
-    { framework },
+    { framework, rootCallbackStart },
   );
   return calls;
 }
@@ -116,8 +125,14 @@ export function bareExpectCalls(
   sourceFile: ts.SourceFile,
   expectBindings?: readonly string[],
   framework?: Framework,
+  rootCallbackStart?: number,
 ): ts.CallExpression[] {
-  return expectCalls(sourceFile, expectBindings, framework).filter((call) => {
+  return expectCalls(
+    sourceFile,
+    expectBindings,
+    framework,
+    rootCallbackStart,
+  ).filter((call) => {
     const parent = call.parent;
     return !(
       ts.isPropertyAccessExpression(parent) && parent.expression === call
@@ -128,6 +143,7 @@ export function bareExpectCalls(
 export function assertionCountGuards(
   sourceFile: ts.SourceFile,
   expectBindings?: readonly string[],
+  rootCallbackStart?: number,
 ): ts.CallExpression[] {
   const guards: ts.CallExpression[] = [];
   visitExecutableNodes(
@@ -148,7 +164,7 @@ export function assertionCountGuards(
         guards.push(node);
       }
     },
-    { expectBindings },
+    { expectBindings, rootCallbackStart },
   );
   return guards;
 }
@@ -158,6 +174,7 @@ export function assertions(
   framework: Framework = 'unknown',
   bindings: readonly NativeAssertionBinding[] = [],
   expectBindings?: readonly string[],
+  rootCallbackStart?: number,
 ): Assertion[] {
   const found: Assertion[] = [];
 
@@ -178,10 +195,15 @@ export function assertions(
       );
       if (assertion) found.push(assertion);
     },
-    { expectBindings, framework },
+    { expectBindings, framework, rootCallbackStart },
   );
 
-  for (const matcher of nativeAssertionCalls(sourceFile, framework, bindings)) {
+  for (const matcher of nativeAssertionCalls(
+    sourceFile,
+    framework,
+    bindings,
+    rootCallbackStart,
+  )) {
     const matcherName = nodeAssertionName(matcher, bindings);
     if (!matcherName) continue;
 
@@ -230,12 +252,19 @@ export function hasOnlyZeroArgumentMatchers(
   framework?: Framework,
   bindings?: readonly NativeAssertionBinding[],
   expectBindings?: readonly string[],
+  rootCallbackStart?: number,
 ): boolean {
   const direct = [
-    ...expectCalls(sourceFile, expectBindings, framework),
-    ...nativeAssertionCalls(sourceFile, framework, bindings),
+    ...expectCalls(sourceFile, expectBindings, framework, rootCallbackStart),
+    ...nativeAssertionCalls(sourceFile, framework, bindings, rootCallbackStart),
   ];
-  const found = assertions(sourceFile, framework, bindings, expectBindings);
+  const found = assertions(
+    sourceFile,
+    framework,
+    bindings,
+    expectBindings,
+    rootCallbackStart,
+  );
   return (
     direct.length > 0 &&
     direct.length === found.length &&
@@ -257,17 +286,86 @@ export function hasOnlyMatchers(
   framework?: Framework,
   bindings?: readonly NativeAssertionBinding[],
   expectBindings?: readonly string[],
+  rootCallbackStart?: number,
 ): boolean {
   const direct = [
-    ...expectCalls(sourceFile, expectBindings, framework),
-    ...nativeAssertionCalls(sourceFile, framework, bindings),
+    ...expectCalls(sourceFile, expectBindings, framework, rootCallbackStart),
+    ...nativeAssertionCalls(sourceFile, framework, bindings, rootCallbackStart),
   ];
-  const found = assertions(sourceFile, framework, bindings, expectBindings);
+  const found = assertions(
+    sourceFile,
+    framework,
+    bindings,
+    expectBindings,
+    rootCallbackStart,
+  );
   return (
     direct.length > 0 &&
     direct.length === found.length &&
     found.every((assertion) => matcherNames.includes(assertion.matcherName))
   );
+}
+
+export function hasRecognizedAssertionCall(
+  root: ts.Node,
+  framework: Framework,
+  bindings: readonly NativeAssertionBinding[] = [],
+  expectBindings?: readonly string[],
+): boolean {
+  return hasRecognizedCallInUncertainCallbacks(
+    root,
+    framework,
+    expectBindings,
+    (node) =>
+      ts.isCallExpression(node) &&
+      (Boolean(expectFactoryCall(node, expectBindings, framework)) ||
+        (framework === 'node-test' &&
+          Boolean(nodeAssertionName(node, bindings)))),
+  );
+}
+
+export function hasRecognizedMatcherAssertion(
+  root: ts.Node,
+  framework: Framework,
+  expectBindings?: readonly string[],
+): boolean {
+  return hasRecognizedCallInUncertainCallbacks(
+    root,
+    framework,
+    expectBindings,
+    (node) =>
+      ts.isCallExpression(node) &&
+      Boolean(expectAssertionForMatcher(node, expectBindings, framework)),
+  );
+}
+
+function hasRecognizedCallInUncertainCallbacks(
+  root: ts.Node,
+  framework: Framework,
+  expectBindings: readonly string[] | undefined,
+  isRecognized: (node: ts.Node) => boolean,
+): boolean {
+  const pending = [root];
+  const visited = new Set<ts.Node>();
+
+  while (pending.length > 0) {
+    const callback = pending.pop()!;
+    if (visited.has(callback)) continue;
+    visited.add(callback);
+
+    let found = false;
+    const uncertainCallbacks = visitExecutableNodes(
+      callback,
+      (node) => {
+        if (isRecognized(node)) found = true;
+      },
+      { expectBindings, framework },
+    );
+    if (found) return true;
+    pending.push(...uncertainCallbacks);
+  }
+
+  return false;
 }
 
 export function expectAssertionForMatcher(

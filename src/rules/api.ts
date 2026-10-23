@@ -16,11 +16,13 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
   const sourceFile = sourceFileFor(testCase);
   const nativeBindings = testCase.nativeAssertionBindings ?? [];
   const expectBindings = testCase.expectBindings;
+  const rootCallbackStart = testCase.analysisContext?.callbackStart;
   const testAssertions = assertions(
     sourceFile,
     testCase.framework,
     nativeBindings,
     expectBindings,
+    rootCallbackStart,
   );
   const findings: Finding[] = [];
   if (
@@ -31,6 +33,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -55,6 +58,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -95,6 +99,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       expectBindings,
       testCase.framework,
       nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -127,6 +132,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       expectBindings,
       testCase.framework,
       nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -155,6 +161,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testCase.framework,
       nativeBindings,
       expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -197,6 +204,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       expectBindings,
       testCase.framework,
       nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -239,6 +247,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       expectBindings,
       testCase.framework,
       nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -267,6 +276,7 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       expectBindings,
       testCase.framework,
       nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -320,7 +330,11 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
         ),
       );
     },
-    { expectBindings, framework: testCase.framework },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
   );
   if (
     testAssertions.length === 0 ||
@@ -471,11 +485,18 @@ function hasOnlyApiAssertions(
   expectBindings?: readonly string[],
   framework: TestCase['framework'] = 'unknown',
   nativeBindings: TestCase['nativeAssertionBindings'] = [],
+  rootCallbackStart?: number,
 ): boolean {
   return (
     testAssertions.length > 0 &&
-    expectCalls(sourceFile, expectBindings, framework).length +
-      nativeAssertionCalls(sourceFile, framework, nativeBindings).length ===
+    expectCalls(sourceFile, expectBindings, framework, rootCallbackStart)
+      .length +
+      nativeAssertionCalls(
+        sourceFile,
+        framework,
+        nativeBindings,
+        rootCallbackStart,
+      ).length ===
       testAssertions.length &&
     testAssertions.every(predicate)
   );
