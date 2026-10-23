@@ -80,6 +80,16 @@ The explicit opt-in policy gate accepts only `mode: "gate"` with `blockOn: ["FAK
 
 The auditor never imports, executes, or evaluates reviewed source. It does not prove test strength, runtime quality, coverage, mutation score, or release readiness.
 
+## Project assets
+
+The standalone website icon is available as an SVG:
+
+![AI Test Auditor website icon](./assets/favicon.svg)
+
+Upload the GitHub social preview image from the repository's **Settings → Social preview** to set it on GitHub:
+
+![AI Test Auditor GitHub social preview](./assets/github-social-preview.jpg)
+
 ## Documentation
 
 Read the [rule catalog](./docs/rules.md) before treating output as a release decision.

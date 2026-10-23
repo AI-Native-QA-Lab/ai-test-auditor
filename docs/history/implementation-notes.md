@@ -128,6 +128,10 @@ Impeccable detector 指出离线 HTML 报告的 finding 卡片使用 4px 左侧�
 
 验证：`tests/reporters.test.ts` 的 22 个测试、lint、typecheck、`git diff --check`、本次变更文件的 Prettier 检查均通过；手动 detector 对 `src/reporters.ts` 返回空结果。
 
+## 2026-10-23 项目品牌图形
+
+新增 `assets/favicon.svg` 与 `assets/github-social-preview.jpg`，并在中英文 README 的“项目素材”章节展示。图标以放大镜和源码行表达静态审阅；GitHub 社交预览使用深色扫描插画，并明确写出“source-only”定位，不暗示测试执行、LLM 审查或质量通过结论。社交图为 1280×640 JPEG，低于 GitHub 当前 1 MB 上传限制，可在仓库 Settings 的 Social preview 中上传；本次只准备 README 展示和素材，没有修改 GitHub 仓库设置。
+
 ## 2026-09-27 Node 原生断言绑定误报修复
 
 审查发现：`node:assert` 的具名 import 或别名虽然是有效断言，却因回调源码不包含文件级 import 而被 `UT001` 判为 `FAKE`。修复将静态 `node:assert` 绑定作为可选 `TestCase` 元数据传入规则；它只记录 ESM 的 default、namespace 和具名绑定，不做模块解析或执行。封装和间接 helper 仍不被推断，旧的直接 `assert(...)` 与 `assert.method(...)` 识别保持不变。

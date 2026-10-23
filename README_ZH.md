@@ -80,6 +80,16 @@ HTML 写入报告时标准输出保持干净；如需在命令行获取绝对路
 
 审计器绝不 import、执行或评估被审计源码；它不证明测试强度、运行时质量、覆盖率、变异得分或发布就绪性。
 
+## 项目素材
+
+网站 icon（SVG）：
+
+![AI Test Auditor 网站 icon](./assets/favicon.svg)
+
+在仓库 **Settings → Social preview** 上传 GitHub 社交预览图后即可启用：
+
+![AI Test Auditor GitHub 社交预览图](./assets/github-social-preview.jpg)
+
 ## 文档导航
 
 将输出作为发布决定前，请先阅读[规则目录](./docs/zh/rules.md)。
