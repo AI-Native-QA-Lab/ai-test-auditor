@@ -114,7 +114,9 @@ function hasRuntimeImportBindings(
 
 function testName(call: ts.CallExpression): string | undefined {
   const name = call.arguments[0];
-  return name && ts.isStringLiteralLike(name) ? name.text : undefined;
+  if (!name) return undefined;
+  if (ts.isStringLiteralLike(name)) return name.text;
+  return ts.isTemplateExpression(name) ? name.getText() : undefined;
 }
 
 export function extractTests(filePath: string): TestCase[] {

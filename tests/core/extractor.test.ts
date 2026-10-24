@@ -83,6 +83,24 @@ describe('extractTests', () => {
     ).toEqual([['UT002'], ['UT002']]);
   });
 
+  it('extracts test callbacks with interpolated template titles once per source call', async () => {
+    const filePath = await createFixture(
+      'templated-registration.spec.ts',
+      "import { expect, test } from '@playwright/test';\nfor (const locale of ['en', 'zh-cn'] as const) {\n  test(`${locale} page opens`, async ({ page }) => {\n    await page.goto(`/${locale}/`);\n    await expect(page.locator('main')).toBeVisible();\n  });\n}\n",
+    );
+
+    const tests = extractTests(filePath);
+
+    expect(tests).toMatchObject([
+      {
+        name: '`${locale} page opens`',
+        framework: 'playwright',
+        type: 'e2e',
+      },
+    ]);
+    expect(tests).toHaveLength(1);
+  });
+
   it('does not treat namespace-local test helpers as framework registrations', async () => {
     const filePath = await createFixture(
       'namespace-local-test.test.ts',

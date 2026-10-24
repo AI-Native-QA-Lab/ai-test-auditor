@@ -124,14 +124,21 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
           statements.length === 0 ||
           statements.every(isConsoleLoggingStatement);
         if (
-          onlyLogs &&
-          ts.isTryStatement(tryStatement) &&
-          containsPlaywrightCall(
+          !onlyLogs ||
+          !ts.isTryStatement(tryStatement) ||
+          !containsPlaywrightCall(
             tryStatement.tryBlock,
             expectBindings,
             testCase.framework,
           )
         ) {
+          return;
+        }
+
+        const swallowsAssertion = testAssertions.some((assertion) =>
+          isDescendantOf(assertion.matcher, tryStatement.tryBlock),
+        );
+        if (swallowsAssertion) {
           findings.push(
             finding(
               testCase,
@@ -140,8 +147,21 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
               'FAKE',
               'CRITICAL',
               'HIGH',
-              'E2E006 catches a Playwright error and leaves the journey passing. Static analysis cannot determine whether the failure was expected cleanup.',
-              'Assert the expected error or rethrow the Playwright failure so an unexpected journey error can fail the test.',
+              'E2E006 catches a Playwright assertion failure without throwing it and only leaves the catch empty or logs it. Static analysis cannot prove every journey outcome.',
+              'Assert the expected failure in the catch block or rethrow the assertion error so an unexpected matcher failure can fail the test.',
+            ),
+          );
+        } else {
+          findings.push(
+            finding(
+              testCase,
+              node,
+              'E2E006',
+              'WEAK',
+              'WARNING',
+              'MEDIUM',
+              'E2E006 catches a Playwright error and leaves the journey passing. Static analysis cannot determine whether the failure was expected navigation, cleanup, or probing.',
+              'Confirm the caught error is expected; otherwise assert the expected failure or rethrow unexpected errors.',
             ),
           );
         }
@@ -248,6 +268,25 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
 }
 
 const UNSTABLE_SELECTOR_METHODS = ['locator', '$', '$$'] as const;
+const LOCATOR_ROOT_METHODS = [
+  '$',
+  '$$',
+  'and',
+  'filter',
+  'first',
+  'frameLocator',
+  'getByAltText',
+  'getByLabel',
+  'getByPlaceholder',
+  'getByRole',
+  'getByTestId',
+  'getByText',
+  'getByTitle',
+  'last',
+  'locator',
+  'nth',
+  'or',
+] as const;
 const PLAYWRIGHT_MATCHERS = [
   'toBeAttached',
   'toBeOK',
@@ -301,8 +340,7 @@ function isUnstableSelectorCall(node: ts.Node): node is ts.CallExpression {
   if (
     !ts.isCallExpression(node) ||
     !ts.isPropertyAccessExpression(node.expression) ||
-    !ts.isIdentifier(node.expression.expression) ||
-    node.expression.expression.text !== 'page' ||
+    !isPageOrLocatorExpression(node.expression.expression) ||
     !UNSTABLE_SELECTOR_METHODS.includes(
       node.expression.name.text as (typeof UNSTABLE_SELECTOR_METHODS)[number],
     )
@@ -315,6 +353,110 @@ function isUnstableSelectorCall(node: ts.Node): node is ts.CallExpression {
     selector &&
     ts.isStringLiteralLike(selector) &&
     isUnstableSelector(selector.text),
+  );
+}
+
+function isPageOrLocatorExpression(
+  expression: ts.Expression,
+  seenDeclarations = new Set<ts.VariableDeclaration>(),
+): boolean {
+  if (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isTypeAssertionExpression(expression) ||
+    ts.isNonNullExpression(expression)
+  ) {
+    return isPageOrLocatorExpression(expression.expression, seenDeclarations);
+  }
+
+  if (ts.isIdentifier(expression)) {
+    if (expression.text === 'page') return true;
+
+    const declaration = constDeclarationBefore(expression);
+    if (!declaration?.initializer || seenDeclarations.has(declaration)) {
+      return false;
+    }
+
+    seenDeclarations.add(declaration);
+    return isPageOrLocatorExpression(declaration.initializer, seenDeclarations);
+  }
+
+  if (
+    !ts.isCallExpression(expression) ||
+    !ts.isPropertyAccessExpression(expression.expression) ||
+    !LOCATOR_ROOT_METHODS.includes(
+      expression.expression.name.text as (typeof LOCATOR_ROOT_METHODS)[number],
+    )
+  ) {
+    return false;
+  }
+
+  return isPageOrLocatorExpression(
+    expression.expression.expression,
+    seenDeclarations,
+  );
+}
+
+function constDeclarationBefore(
+  identifier: ts.Identifier,
+): ts.VariableDeclaration | undefined {
+  let current: ts.Node | undefined = identifier.parent;
+
+  while (current) {
+    if (ts.isBlock(current) || ts.isSourceFile(current)) {
+      for (const statement of current.statements) {
+        if (!ts.isVariableStatement(statement)) continue;
+
+        for (const declaration of statement.declarationList.declarations) {
+          if (!bindingNameContains(declaration.name, identifier.text)) {
+            continue;
+          }
+
+          return (statement.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+            declaration.initializer &&
+            declaration.getStart() < identifier.getStart()
+            ? declaration
+            : undefined;
+        }
+      }
+    }
+
+    if (
+      (ts.isForStatement(current) ||
+        ts.isForInStatement(current) ||
+        ts.isForOfStatement(current)) &&
+      current.initializer &&
+      ts.isVariableDeclarationList(current.initializer) &&
+      current.initializer.declarations.some((declaration) =>
+        bindingNameContains(declaration.name, identifier.text),
+      )
+    ) {
+      return undefined;
+    }
+
+    if (
+      ts.isFunctionLike(current) &&
+      (current.parameters.some((parameter) =>
+        bindingNameContains(parameter.name, identifier.text),
+      ) ||
+        (ts.isFunctionExpression(current) &&
+          current.name?.text === identifier.text))
+    ) {
+      return undefined;
+    }
+
+    current = current.parent;
+  }
+
+  return undefined;
+}
+
+function bindingNameContains(binding: ts.BindingName, name: string): boolean {
+  if (ts.isIdentifier(binding)) return binding.text === name;
+  return binding.elements.some((element) =>
+    ts.isBindingElement(element)
+      ? bindingNameContains(element.name, name)
+      : false,
   );
 }
 
@@ -550,8 +692,9 @@ function containsPlaywrightCall(
     (node) => {
       if (
         ts.isCallExpression(node) &&
-        ts.isPropertyAccessExpression(node.expression) &&
-        isPageRooted(node.expression.expression)
+        ((ts.isPropertyAccessExpression(node.expression) &&
+          isPageRooted(node.expression.expression)) ||
+          isPlaywrightMatcher(node, expectBindings, framework))
       ) {
         found = true;
       }
@@ -576,6 +719,15 @@ function isConsoleLoggingStatement(statement: ts.Statement): boolean {
       statement.expression.expression.name.text,
     )
   );
+}
+
+function isDescendantOf(node: ts.Node, ancestor: ts.Node): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parent;
+  }
+  return false;
 }
 
 function isEmptyUiAssertion(

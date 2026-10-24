@@ -931,6 +931,29 @@ describe('evaluateRules', () => {
     ).not.toContain('E2E005');
   });
 
+  it('reports unstable selectors on page-derived locators only', () => {
+    const findings = evaluateRules(
+      testCase(
+        `{
+  const firstIssue = page.locator('.weekly-index-card').first();
+  firstIssue.locator('h3');
+  const unrelated = { locator: (selector: string) => selector };
+  unrelated.locator('.not-playwright');
+  for (const firstIssue of items) {
+    firstIssue.locator('.shadowed-not-playwright');
+  }
+  {
+    const { firstIssue } = state;
+    firstIssue.locator('.shadowed-property-not-playwright');
+  }
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).filter((finding) => finding.ruleId === 'E2E005');
+
+    expect(findings.map((finding) => finding.line)).toEqual([11, 12]);
+  });
+
   it('recognizes class and id selectors inside compound CSS selectors', () => {
     const findings = evaluateRules(
       testCase(
@@ -979,7 +1002,7 @@ describe('evaluateRules', () => {
     expect(findings).not.toContain('E2E005');
   });
 
-  it('reports E2E006 when a Playwright error is swallowed', () => {
+  it('reports E2E006 as contextual when the caught try has no assertion', () => {
     const finding = evaluateRules(
       testCase(
         '{ try { await page.goto("/"); } catch (error) { console.error(error); } }',
@@ -987,6 +1010,26 @@ describe('evaluateRules', () => {
       ),
     ).find((item) => item.ruleId === 'E2E006');
     expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+    expect(
+      evaluateRules(
+        testCase(
+          '{ try { await page.goto("/"); } catch (error) { console.error(error); } await expect(page).toBeVisible(); }',
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ).find((item) => item.ruleId === 'E2E006'),
+    ).toMatchObject({ classification: 'WEAK' });
+    expect(
+      evaluateRules(
+        testCase(
+          '{ try { await expect(page).toHaveURL("/"); } catch (error) { console.error(error); } }',
+          { framework: 'playwright', type: 'e2e' },
+        ),
+      ).find((item) => item.ruleId === 'E2E006'),
+    ).toMatchObject({
       classification: 'FAKE',
       severity: 'CRITICAL',
       confidence: 'HIGH',

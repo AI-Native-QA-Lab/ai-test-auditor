@@ -251,3 +251,13 @@ RED/GREEN：先新增 `fast-check`、不透明 `.forEach`、外层 suite 已调�
 验证：`npm test` 通过 23 个文件、366 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮全部变更文件的 Prettier 检查和 `git diff --check` 通过。全仓 `npm run format:check` 只因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，该缓存未修改。构建后 benchmark CLI 审计 44 个回调，得到 13 个 `FAKE`、17 个 `WEAK`、14 个 `UNASSESSED`，36 个 finding；退出码 1 是 benchmark fixture 存在静态发现项的预期行为。重新静态审计目标仓库的 563 个测试回调后得到 1 个 `FAKE`、304 个 `WEAK`、258 个 `UNASSESSED`，其中无 E2E001；6 个 UT001 都为 WEAK。仅余的 E2E006 位于 `toc.spec.ts`：空 catch 吞掉 Playwright 执行错误，后续 `expect(true).toBe(true)` 不能验证旅程结果，按当前规则边界仍属合理确定性 finding。E2E005 新增的 23 个 finding 对应被当前测试调用的外层 helper 中 class/tag selector，均保持 WEAK；E2E007 回到 37 项，未把条件测试注册算成条件断言。
 
 边界：目标仓库只做静态源码审计，没有执行它的测试；这些分类不证明运行时结果、覆盖率或质量。未命中的测试仍为 `UNASSESSED`，`Trust Score` 也不是质量结论。原有路线图和 API 场景追溯草案保持原样并继续保留在工作区。
+
+## 2026-10-24 重复审计及测试注册/Locator 追溯修正
+
+重新审计 `naodeng.com.cn/tests` 后复核 563 个已提取回调，原结果为 1 个 `FAKE`、304 个 `WEAK`、258 个 `UNASSESSED`。代码复核发现插值模板测试名被 `testName` 拒绝，因此包含 `${...}` 标题的测试注册调用点完全没有进入审计；E2E005 也只识别直接以 `page` 为接收者的 selector 调用，未覆盖 Page 派生的 Locator 链。现在模板标题按源码形式保留，每个注册调用点只提取一次，不展开循环值；E2E005 可沿 Page/Locator/FrameLocator 链追踪直接调用和可见 `const` 别名，同时排除普通对象同名方法及循环/解构绑定遮蔽的别名。
+
+RED/GREEN：为插值模板标题、Page 派生 Locator、不相关对象 `.locator()` 和循环/解构变量遮蔽增加回归；先观察到模板标题未提取，以及别名 locator 漏报/被遮蔽变量误报，修复后 `npx vitest run tests/core/extractor.test.ts tests/core/rule-engine.test.ts` 与完整 `npm test` 通过。复核 E2E006 时发现没有断言的 `try/catch` 也被报为 `FAKE`；新增回归先观察到该分类过强，随后实现为 try 内有可识别 Playwright 断言时 `FAKE`、否则 `WEAK`，并将 matcher 断言本身纳入 Playwright 调用识别。聚焦 E2E006 回归通过。
+
+验证：完整测试通过 23 个文件、377 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮文件 Prettier 检查通过。全仓 `npm run format:check` 仅因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1。benchmark CLI 静态审计 44 个回调，得到 12 个 `FAKE`、18 个 `WEAK`、14 个 `UNASSESSED` 和 36 个 finding；退出码 1 是 fixture findings 的预期行为。再次静态审计目标仓库共提取 673 个回调，得到 1 个 `FAKE`、393 个 `WEAK`、279 个 `UNASSESSED`、0 个 `INVALID`，finding 总数为 1169，未发现 E2E001。相对第一次审计，提取了 110 个插值模板标题的回调调用点；新增 finding 全为 `WEAK`：E2E005 增加 352 个、E2E007 增加 32 个、E2E003 增加 2 个，没有新增 `FAKE`。唯一 `FAKE` 仍是 `tests/e2e/specs/toc.spec.ts:92` 的 Playwright 错误被吞后以恒真断言结束。
+
+边界：审计只读取源码，没有运行目标项目测试。`WEAK`、`UNASSESSED` 与 `Trust Score` 不证明目标测试的运行效果、覆盖率或整体质量。调整后目标目录中的 `toc.spec.ts:92` 仍因 try 内断言错误被吞而保留为唯一 `FAKE`。当前工作区另含本轮以外的分析器、Skill 与路线图改动，本轮均予以保留。
