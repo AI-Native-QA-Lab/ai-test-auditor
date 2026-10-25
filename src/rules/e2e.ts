@@ -5,6 +5,7 @@ import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
   finding,
+  hasImportedAssertionLikeCall,
   hasRecognizedMatcherAssertion,
   hasOnlyZeroArgumentMatchers,
   expectAssertionForMatcher,
@@ -27,17 +28,24 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
   );
 
   if (testAssertions.length === 0) {
-    const possibleAssertion = visitExecutableNodes(sourceFile, () => {}, {
-      expectBindings,
-      framework: testCase.framework,
-      rootCallbackStart,
-    }).some((callback) =>
-      hasRecognizedMatcherAssertion(
-        callback,
+    const possibleAssertion =
+      visitExecutableNodes(sourceFile, () => {}, {
+        expectBindings,
+        framework: testCase.framework,
+        rootCallbackStart,
+      }).some((callback) =>
+        hasRecognizedMatcherAssertion(
+          callback,
+          testCase.framework,
+          expectBindings,
+        ),
+      ) ||
+      hasImportedAssertionLikeCall(
+        sourceFile,
         testCase.framework,
         expectBindings,
-      ),
-    );
+        rootCallbackStart,
+      );
     findings.push(
       finding(
         testCase,
@@ -47,10 +55,10 @@ export function evaluateE2eRules(testCase: TestCase): Finding[] {
         possibleAssertion ? 'WARNING' : 'CRITICAL',
         possibleAssertion ? 'MEDIUM' : 'HIGH',
         possibleAssertion
-          ? 'E2E001 found a recognized expect assertion only inside a callback for an opaque collection receiver. Static analysis cannot prove that the callback runs.'
+          ? 'E2E001 found assertion-like evidence only inside an opaque callback or imported helper whose behavior cannot be verified locally.'
           : 'E2E001 found no expect assertion in this Playwright journey. Static analysis cannot prove that navigation or actions alone verify a user-visible outcome.',
         possibleAssertion
-          ? 'Make the callback execution explicit or establish a non-empty input before relying on its assertion. Static analysis cannot determine the receiver contents.'
+          ? 'Make callback invocation explicit or review the imported helper implementation; static analysis cannot establish whether opaque callbacks run or helpers assert.'
           : 'Add an assertion for an observable user-facing result or state change. Static analysis cannot determine whether every intended journey outcome is covered.',
       ),
     );

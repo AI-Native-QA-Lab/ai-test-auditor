@@ -8,6 +8,7 @@ import {
   expectCalls,
   hasOnlyMatchers,
   hasOnlyZeroArgumentMatchers,
+  hasImportedAssertionLikeCall,
   hasRecognizedAssertionCall,
   finding,
   isSimpleLiteral,
@@ -56,18 +57,25 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
       rootCallbackStart,
     ).length === 0
   ) {
-    const possibleAssertion = visitExecutableNodes(sourceFile, () => {}, {
-      expectBindings,
-      framework: testCase.framework,
-      rootCallbackStart,
-    }).some((callback) =>
-      hasRecognizedAssertionCall(
-        callback,
-        testCase.framework,
-        nativeBindings,
+    const possibleAssertion =
+      visitExecutableNodes(sourceFile, () => {}, {
         expectBindings,
-      ),
-    );
+        framework: testCase.framework,
+        rootCallbackStart,
+      }).some((callback) =>
+        hasRecognizedAssertionCall(
+          callback,
+          testCase.framework,
+          nativeBindings,
+          expectBindings,
+        ),
+      ) ||
+      hasImportedAssertionLikeCall(
+        sourceFile,
+        testCase.framework,
+        expectBindings,
+        rootCallbackStart,
+      );
     findings.push(
       finding(
         testCase,
@@ -77,12 +85,12 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
         possibleAssertion ? 'WARNING' : 'CRITICAL',
         possibleAssertion ? 'MEDIUM' : 'HIGH',
         possibleAssertion
-          ? 'UT001 found a recognized expect or Node native assert call only inside a callback for an opaque collection receiver. Static analysis cannot prove that the callback runs.'
+          ? 'UT001 found assertion-like evidence only inside an opaque callback or imported helper whose behavior cannot be verified locally.'
           : fakeMessage(
               'UT001 found no recognized expect or Node native assert call in this test.',
             ),
         possibleAssertion
-          ? 'Make the callback execution explicit or establish a non-empty input before relying on its assertion. Static analysis cannot determine the receiver contents.'
+          ? 'Make callback invocation explicit or review the imported helper implementation; static analysis cannot establish whether opaque callbacks run or helpers assert.'
           : fakeRemediation(
               'Add an assertion for an observable behavior or side effect.',
             ),
@@ -335,20 +343,31 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
         statements.length === 0 || statements.every(isConsoleLoggingStatement);
       if (!onlyLogs) return;
 
+      const tryStatement = node.parent;
+      const swallowsRecognizedAssertion =
+        ts.isTryStatement(tryStatement) &&
+        testAssertions.some((assertion) =>
+          isDescendantOf(assertion.matcher, tryStatement.tryBlock),
+        );
+
       findings.push(
         finding(
           testCase,
           node,
           'UT008',
-          'FAKE',
-          'CRITICAL',
-          'HIGH',
-          fakeMessage(
-            'UT008 catches an error without throwing it and only leaves it empty or logs it.',
-          ),
-          fakeRemediation(
-            'Assert the failure behavior or rethrow the error so an unexpected failure can fail the test.',
-          ),
+          swallowsRecognizedAssertion ? 'FAKE' : 'WEAK',
+          swallowsRecognizedAssertion ? 'CRITICAL' : 'WARNING',
+          swallowsRecognizedAssertion ? 'HIGH' : 'MEDIUM',
+          swallowsRecognizedAssertion
+            ? fakeMessage(
+                'UT008 catches an assertion failure without throwing it and only leaves the catch empty or logs it.',
+              )
+            : 'UT008 catches an error and only leaves the catch empty or logs it. Static analysis cannot determine whether this is expected cleanup or suppresses a test failure.',
+          swallowsRecognizedAssertion
+            ? fakeRemediation(
+                'Assert the expected failure in the catch block or rethrow the error so an unexpected assertion failure can fail the test.',
+              )
+            : 'Confirm the caught error is expected; otherwise assert the expected failure or rethrow unexpected errors.',
         ),
       );
     },
@@ -360,6 +379,15 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   );
 
   return findings;
+}
+
+function isDescendantOf(node: ts.Node, ancestor: ts.Node): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parent;
+  }
+  return false;
 }
 
 function hasPotentialEvaluationDifference(expression: ts.Expression): boolean {

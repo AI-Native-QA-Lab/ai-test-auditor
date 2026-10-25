@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
 import { visitExecutableNodes } from './ast-traversal.js';
+import { resolveLocalCallback } from '../core/callback-resolution.js';
 import {
   isNodeComparisonMethod,
   nodeAssertionName,
@@ -107,7 +108,7 @@ export function nativeAssertionCalls(
   bindings: readonly NativeAssertionBinding[] = [],
   rootCallbackStart?: number,
 ): ts.CallExpression[] {
-  if (framework !== 'node-test') return [];
+  if (framework === 'playwright') return [];
 
   const calls: ts.CallExpression[] = [];
   visitExecutableNodes(
@@ -134,10 +135,108 @@ export function bareExpectCalls(
     rootCallbackStart,
   ).filter((call) => {
     const parent = call.parent;
-    return !(
-      ts.isPropertyAccessExpression(parent) && parent.expression === call
+    if (ts.isPropertyAccessExpression(parent) && parent.expression === call) {
+      return false;
+    }
+    return !isReturnedPollFactoryUsedAsMatcher(
+      call,
+      sourceFile,
+      expectBindings,
+      framework,
+      rootCallbackStart,
     );
   });
+}
+
+function isReturnedPollFactoryUsedAsMatcher(
+  call: ts.CallExpression,
+  sourceFile: ts.SourceFile,
+  expectBindings: readonly string[] | undefined,
+  framework: Framework | undefined,
+  rootCallbackStart: number | undefined,
+): boolean {
+  if (
+    !ts.isPropertyAccessExpression(call.expression) ||
+    call.expression.name.text !== 'poll' ||
+    !isExpectReference(call.expression.expression, expectBindings)
+  ) {
+    return false;
+  }
+
+  let owner: ts.Node | undefined = call.parent;
+  while (owner && !ts.isFunctionLike(owner)) owner = owner.parent;
+  if (!owner || !isReturnedExpression(call, owner)) return false;
+
+  const helperName = localHelperName(owner);
+  if (!helperName) return false;
+
+  const callSites: ts.CallExpression[] = [];
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === helperName &&
+        resolveLocalCallback(helperName, node, sourceFile) === owner
+      ) {
+        callSites.push(node);
+      }
+    },
+    { expectBindings, framework, rootCallbackStart },
+  );
+
+  return callSites.length > 0 && callSites.every(hasMatcherCallChain);
+}
+
+function isReturnedExpression(
+  expression: ts.Expression,
+  owner: ts.Node,
+): boolean {
+  let current: ts.Expression = expression;
+  while (
+    ts.isParenthesizedExpression(current.parent) ||
+    ts.isAsExpression(current.parent) ||
+    ts.isTypeAssertionExpression(current.parent) ||
+    ts.isSatisfiesExpression(current.parent) ||
+    ts.isNonNullExpression(current.parent)
+  ) {
+    current = current.parent;
+  }
+
+  const parent = current.parent;
+  return (
+    (ts.isReturnStatement(parent) && parent.expression === current) ||
+    (ts.isFunctionLike(owner) && 'body' in owner && owner.body === current)
+  );
+}
+
+function localHelperName(helper: ts.Node): string | undefined {
+  if (ts.isFunctionDeclaration(helper)) return helper.name?.text;
+  const declaration = helper.parent;
+  if (
+    ts.isVariableDeclaration(declaration) &&
+    declaration.initializer === helper &&
+    ts.isIdentifier(declaration.name)
+  ) {
+    return declaration.name.text;
+  }
+  return undefined;
+}
+
+function hasMatcherCallChain(call: ts.CallExpression): boolean {
+  let current: ts.Expression = call;
+  while (true) {
+    const parent = current.parent;
+    if (
+      ts.isParenthesizedExpression(parent) ||
+      (ts.isPropertyAccessExpression(parent) && parent.expression === current)
+    ) {
+      current = parent;
+      continue;
+    }
+    return ts.isCallExpression(parent) && parent.expression === current;
+  }
 }
 
 export function assertionCountGuards(
@@ -312,6 +411,9 @@ export function hasRecognizedAssertionCall(
   bindings: readonly NativeAssertionBinding[] = [],
   expectBindings?: readonly string[],
 ): boolean {
+  const importedAssertionLikeBindings = assertionLikeImportBindings(
+    root.getSourceFile(),
+  );
   return hasRecognizedCallInUncertainCallbacks(
     root,
     framework,
@@ -319,8 +421,9 @@ export function hasRecognizedAssertionCall(
     (node) =>
       ts.isCallExpression(node) &&
       (Boolean(expectFactoryCall(node, expectBindings, framework)) ||
-        (framework === 'node-test' &&
-          Boolean(nodeAssertionName(node, bindings)))),
+        (framework !== 'playwright' &&
+          Boolean(nodeAssertionName(node, bindings))) ||
+        isAssertionLikeImportedCall(node, importedAssertionLikeBindings)),
   );
 }
 
@@ -329,13 +432,110 @@ export function hasRecognizedMatcherAssertion(
   framework: Framework,
   expectBindings?: readonly string[],
 ): boolean {
+  const importedAssertionLikeBindings = assertionLikeImportBindings(
+    root.getSourceFile(),
+  );
   return hasRecognizedCallInUncertainCallbacks(
     root,
     framework,
     expectBindings,
     (node) =>
       ts.isCallExpression(node) &&
-      Boolean(expectAssertionForMatcher(node, expectBindings, framework)),
+      (Boolean(expectAssertionForMatcher(node, expectBindings, framework)) ||
+        isAssertionLikeImportedCall(node, importedAssertionLikeBindings)),
+  );
+}
+
+export function hasImportedAssertionLikeCall(
+  root: ts.Node,
+  framework: Framework,
+  expectBindings?: readonly string[],
+  rootCallbackStart?: number,
+): boolean {
+  const importedAssertionLikeBindings = assertionLikeImportBindings(
+    root.getSourceFile(),
+  );
+  let found = false;
+  visitExecutableNodes(
+    root,
+    (node) => {
+      if (
+        ts.isCallExpression(node) &&
+        isAssertionLikeImportedCall(node, importedAssertionLikeBindings)
+      ) {
+        found = true;
+      }
+    },
+    { expectBindings, framework, rootCallbackStart },
+  );
+  return found;
+}
+
+interface AssertionLikeImports {
+  readonly named: ReadonlyMap<string, string>;
+  readonly namespaces: ReadonlySet<string>;
+}
+
+function assertionLikeImportBindings(
+  sourceFile: ts.SourceFile,
+): AssertionLikeImports {
+  const named = new Map<string, string>();
+  const namespaces = new Set<string>();
+
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier)
+    ) {
+      continue;
+    }
+    const clause = statement.importClause;
+    if (!clause || clause.isTypeOnly) continue;
+    if (clause.name && isAssertionLikeName(clause.name.text)) {
+      named.set(clause.name.text, clause.name.text);
+    }
+
+    const bindings = clause.namedBindings;
+    if (!bindings) continue;
+    if (ts.isNamespaceImport(bindings)) {
+      namespaces.add(bindings.name.text);
+      continue;
+    }
+    for (const element of bindings.elements) {
+      if (element.isTypeOnly) continue;
+      const importedName = element.propertyName?.text ?? element.name.text;
+      if (isAssertionLikeName(importedName)) {
+        named.set(element.name.text, importedName);
+      }
+    }
+  }
+
+  return { named, namespaces };
+}
+
+function isAssertionLikeName(name: string): boolean {
+  return /^(?:assert|expect|verify|check|validate)[A-Z_]/u.test(name);
+}
+
+function isAssertionLikeImportedCall(
+  node: ts.CallExpression,
+  imports: AssertionLikeImports,
+): boolean {
+  if (ts.isIdentifier(node.expression)) {
+    const localName = node.expression.text;
+    return imports.named.has(localName) && !isShadowedAtNode(node, localName);
+  }
+  if (
+    !ts.isPropertyAccessExpression(node.expression) ||
+    !ts.isIdentifier(node.expression.expression)
+  ) {
+    return false;
+  }
+  const namespace = node.expression.expression.text;
+  return (
+    imports.namespaces.has(namespace) &&
+    isAssertionLikeName(node.expression.name.text) &&
+    !isShadowedAtNode(node, namespace)
   );
 }
 

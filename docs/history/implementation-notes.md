@@ -242,6 +242,10 @@ RED/GREEN：为重复属性/下标读取、类型转换、新建身份和只写�
 
 边界：规则只判断源码中可见的表达式结构与变量读取；不会执行用户代码或推断页面 action 的运行时调度。`WEAK` 是风险提示，不表示断言必然失败或页面 action 必然竞态；未命中仍为 `UNASSESSED`。
 
+## 2026-10-23 API 场景追溯设计草案
+
+根据当前 API 规则边界与 `auto` 分类行为，补充 v2.1 API 场景追溯提案，并同步英文和中文路线图。草案将单测断言质量、源码场景关联和运行结果分成独立证据层；建议先加固既有 API 类型选择，再定义 v1.5 证据契约，最后评估 JS/TS 静态场景映射。当前文档状态为待 review，未获批、未排期，本轮没有修改分析器行为。提案明确了 `no_source_match` 只针对完整且声明的扫描范围，并禁止把源码关联表述为运行通过或业务覆盖证明。
+
 ## 2026-10-23 测试 callback 误报复核与降级
 
 对 `naodeng.com.cn/tests` 的源码审计与代码复核发现三类既有边界问题：UT001 未跟进已导入 `fast-check` 的 `fc.assert(fc.property(...))` callback；E2E001 未识别当前测试直接调用的外层 suite helper；断言只在接收者不透明的 `.forEach` callback 中时仍被报为确定的 `FAKE`。补充完整源文件与当前测试 callback 的内部分析上下文，以便按精确回调边界分析并解析同文件外层 helper；公开审计结果继续剥离该内部上下文。`fast-check` 只识别静态 default/namespace import、对应 `assert(property(...))` 形态和可确定的正运行次数；不透明集合 callback 不视为已执行，若其内部（包括嵌套集合 callback）有唯一断言，则 UT001/E2E001 降为 `WEAK`。进一步修复完整源文件分析下 E2E007 将测试外层条件注册当作 journey 内条件的误报；测试内部条件仍触发规则。
@@ -261,3 +265,27 @@ RED/GREEN：为插值模板标题、Page 派生 Locator、不相关对象 `.loca
 验证：完整测试通过 23 个文件、377 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮文件 Prettier 检查通过。全仓 `npm run format:check` 仅因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1。benchmark CLI 静态审计 44 个回调，得到 12 个 `FAKE`、18 个 `WEAK`、14 个 `UNASSESSED` 和 36 个 finding；退出码 1 是 fixture findings 的预期行为。再次静态审计目标仓库共提取 673 个回调，得到 1 个 `FAKE`、393 个 `WEAK`、279 个 `UNASSESSED`、0 个 `INVALID`，finding 总数为 1169，未发现 E2E001。相对第一次审计，提取了 110 个插值模板标题的回调调用点；新增 finding 全为 `WEAK`：E2E005 增加 352 个、E2E007 增加 32 个、E2E003 增加 2 个，没有新增 `FAKE`。唯一 `FAKE` 仍是 `tests/e2e/specs/toc.spec.ts:92` 的 Playwright 错误被吞后以恒真断言结束。
 
 边界：审计只读取源码，没有运行目标项目测试。`WEAK`、`UNASSESSED` 与 `Trust Score` 不证明目标测试的运行效果、覆盖率或整体质量。调整后目标目录中的 `toc.spec.ts:92` 仍因 try 内断言错误被吞而保留为唯一 `FAKE`。当前工作区另含本轮以外的分析器、Skill 与路线图改动，本轮均予以保留。
+
+## 2026-10-24 dsh-qa 与 deepseek-harness 重复审计及 callback 置信度修正
+
+使用构建后的 CLI 对 `/Users/nao.deng/awsomeCode/dsh-qa` 完整静态审计：315 个回调，45 个 WEAK、270 个 UNASSESSED、0 个 FAKE/INVALID；发现仅为 E2E003 可见性提示 10 项和 E2E005 selector 提示 250 项。抽查 `test/e2e/assistant.spec.js`，均是源码可见的可访问性与 class/id selector 提示，符合规则定义。
+
+`deepseek-harness` 优化前完整报告提取 28,361 个回调，297 个 FAKE、761 个 WEAK、27,303 个 UNASSESSED、0 个 INVALID。源码复核确认 `withDefaultWeb(test, callback)` 内可见断言不能证明导入 wrapper 一定调用 callback，按 UT001 WEAK 处理；导入的 `assertFixtureInventory` 实现在 target 的 `scaffold.ts` 中确实调用 Vitest expect，但本工具不跨模块分析，按 WEAK 处理；Jest/Vitest 中静态绑定的 `node:assert` 则应识别为断言。修正后对相关 6 个代表文件重新静态审计：4 个 wrapper/helper 文件共显示 5 个 UT001 WEAK，两个 Node assert 文件无 UT001。优化后没有再次运行 deepseek-harness 的 28,361 回调全量扫描，故不把优化前聚合数冒充为最新计数。
+
+针对新增的不透明 callback 降级逻辑，发现兜底路径会把明确不会运行的 `fast-check numRuns: 0`、空数组遍历和已知 Promise settlement 未选中的 handler 也降为 WEAK。新增回归先观察到 3 项预期失败，再将这三类可确定未执行 callback 排除在不确定回调证据之外；动态或未知 callback 仍保持 WEAK。另将 E2E006 基准期望从 FAKE 更新为 WEAK：其 try 中只有 `page.goto`，断言位于 catch 之后，符合“try 内没有可识别断言则为 WEAK”的规则边界。
+
+验证：`npm test` 通过 23 个文件、382 项；lint、typecheck、build、12/12 benchmark、变更文件 Prettier 检查和 `git diff --check` 通过。`npm run format:check` 仍仅因本机忽略的 `.impeccable/hook.cache.json` 未通过，该缓存未修改。`node dist/cli.js review benchmarks --format json` 审计 44 个回调，得到 12 个 FAKE、18 个 WEAK、14 个 UNASSESSED、0 个 INVALID；退出码 1 是合成 fixture 含 FAKE finding 的预期行为。目标仓库只做静态审计，没有运行其测试。
+
+边界：deepseek-harness 优化后的验证覆盖受本轮规则影响的代表文件，没有刷新完整扫描总数；所有报告只表示源码证据，`WEAK`、`UNASSESSED` 和 Trust Score 都不代表运行效果或整体质量。
+
+## 2026-10-25 重复审计与配置对象 callback 降级
+
+再次使用构建后的 CLI 静态审计两个目标仓库。`dsh-qa` 仍为 315 个回调、45 个 WEAK、270 个 UNASSESSED、0 个 FAKE/INVALID；报告与上一轮优化后的报告逐字段一致。抽查 `assistant.spec.js` 中的 E2E003 可见性和 E2E005 class/id selector 提示，符合规则的有限语法边界。`deepseek-harness` 全量报告仍提取 28,361 个回调，统计 69 个 FAKE、965 个 WEAK、27,327 个 UNASSESSED、0 个 INVALID；相比上一份完整报告的 297 个 FAKE、761 个 WEAK、27,303 个 UNASSESSED，确认先前对不透明和确定不执行 callback 的处理显著改变了分类分布。报告路径为 `/private/tmp/deepseek-harness-auditor-repeat-20261024.json`。
+
+AI 复核全量报告的 UT001 后发现剩余误判：当断言位于 `runLoaderSmoke({ inspect() { expect(...) } })` 这类直接传入函数调用的对象字面量属性或方法时，遍历器此前只把直接作为调用参数的函数识别为不透明 callback，导致 UT001 错报 FAKE。现在这类对象属性/方法 callback 归为不确定证据并降为 WEAK，不推断被调用。UT001 和 E2E001 分别增加回归覆盖方法声明与箭头函数属性。
+
+RED/GREEN：新增两项回归先观察到期望 WEAK、实际 FAKE；实现后聚焦测试通过。构建后重新静态审计 `session-format-guard.expected.e2e.ts`、`render-tools.e2e.ts`、`office.expected.e2e.ts`、`docx-validation.e2e.ts` 和 `visual-intent.e2e.ts`，5 个文件共 7 个相关 UT001 均为 WEAK、0 个 FAKE。deepseek-harness 全量扫描耗时超过一小时；本次对象属性 callback 修正后未再跑 28,361 个回调的全量扫描，因此上述完整汇总是修正前的结果。
+
+验证：`npm test` 通过 23 个文件、384 项；`npm run lint`、`npm run typecheck`、`npm run build`、所有变更文件 Prettier 检查和 `git diff --check` 通过。`npm run format:check` 仍只因被本机 `.git/info/exclude` 忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，缓存未修改。benchmark CLI 静态审计 44 个回调，得到 12 个 FAKE、18 个 WEAK、14 个 UNASSESSED、0 个 INVALID；退出码 1 是 fixture 存在 FAKE finding 的预期行为。没有运行两个目标仓库的测试。
+
+边界：deepseek-harness 全量统计在最新 callback-property 修正前采集；修正后只验证受影响的真实文件与审计器回归。目标项目审计仍是只读静态源码分析，不代表其测试运行结果、覆盖率或质量。

@@ -16,6 +16,7 @@ function testCase(
     readonly nativeAssertionBindings?: readonly NativeAssertionBinding[];
     readonly line?: number;
     readonly filePath?: string;
+    readonly analysisContext?: TestCase['analysisContext'];
   } = {},
 ): TestCase {
   return {
@@ -28,6 +29,9 @@ function testCase(
     body,
     ...(options.nativeAssertionBindings
       ? { nativeAssertionBindings: options.nativeAssertionBindings }
+      : {}),
+    ...(options.analysisContext
+      ? { analysisContext: options.analysisContext }
       : {}),
   };
 }
@@ -101,6 +105,132 @@ describe('evaluateRules', () => {
 
     expect(findings).not.toContain('UT001');
     expect(findings).toContain('UT002');
+  });
+
+  it('counts assertions in a callback directly invoked by a local helper', () => {
+    expect(
+      ids(
+        testCase(`{
+  function withHome(assertion) {
+    try {
+      assertion('/tmp');
+    } finally {
+      cleanup();
+    }
+  }
+  withHome((home) => {
+    expect(home).toBe('/tmp');
+  });
+}`),
+      ),
+    ).not.toContain('UT001');
+  });
+
+  it('downgrades assertions in a callback only conditionally invoked by a helper', () => {
+    const finding = evaluateRules(
+      testCase(`{
+  function maybe(assertion) {
+    if (enabled) assertion();
+  }
+  maybe(() => expect(value).toBe('ready'));
+}`),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+  });
+
+  it('downgrades assertions passed to an opaque imported callback helper', () => {
+    const finding = evaluateRules(
+      testCase(`{
+  withDefaultWeb(test, async ({ request }) => {
+    expect(await request('roster')).toEqual(expectedRoster);
+  });
+}`),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+  });
+
+  it('downgrades assertions in callback properties passed to an opaque helper', () => {
+    const finding = evaluateRules(
+      testCase(`{
+  runLoaderSmoke({
+    async inspect() {
+      expect(result).toBe(true);
+    },
+  });
+}`),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+  });
+
+  it('downgrades Playwright assertions in callback properties passed to an opaque helper', () => {
+    const finding = evaluateRules(
+      testCase(
+        `{
+  withBrowser({
+    inspect: async () => {
+      await expect(page.getByRole('heading')).toBeVisible();
+    },
+  });
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).find((candidate) => candidate.ruleId === 'E2E001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+  });
+
+  it('downgrades a call to an imported assertion-like helper', () => {
+    const source = `import { assertFixtureInventory as checkInventory } from './scaffold';
+it('keeps the fixture inventory closed', () => {
+  checkInventory(snapshotDir, expectedFiles);
+});`;
+    const callbackStart = source.indexOf('() =>');
+    const finding = evaluateRules(
+      testCase('{ checkInventory(snapshotDir, expectedFiles); }', {
+        analysisContext: { source, callbackStart },
+      }),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
+  });
+
+  it('does not treat a shadowed callback parameter invocation as an assertion callback', () => {
+    expect(
+      ids(
+        testCase(`{
+  function withCallback(assertion) {
+    {
+      const assertion = () => {};
+      assertion();
+    }
+  }
+  withCallback(() => {});
+}`),
+      ),
+    ).toContain('UT001');
   });
 
   it('does not follow a helper name shadowed by a function-scoped var', () => {
@@ -201,6 +331,16 @@ describe('evaluateRules', () => {
 
     expect(findings).toContain('UT001');
     expect(findings).not.toContain('UT002');
+  });
+
+  it('does not count a Promise callback excluded by a known settlement', () => {
+    const finding = evaluateRules(
+      testCase(
+        '{ await Promise.resolve(1).then(undefined, () => expect(1).toBe(1)); }',
+      ),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({ classification: 'FAKE' });
   });
 
   it('counts assertions in a later guaranteed Promise continuation', () => {
@@ -305,18 +445,23 @@ describe('evaluateRules', () => {
   });
 
   it('does not assume arbitrary methods execute their callback', () => {
-    expect(
-      ids(
-        testCase('{ values.customVisit((value) => expect(value).toBe(1)); }'),
-      ),
-    ).toContain('UT001');
+    const finding = evaluateRules(
+      testCase('{ values.customVisit((value) => expect(value).toBe(1)); }'),
+    ).find((candidate) => candidate.ruleId === 'UT001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
   });
 
   it('does not count callbacks on a definitely empty array literal', () => {
-    const findings = ids(testCase('{ [].map(() => expect(1).toBe(1)); }'));
+    const finding = evaluateRules(
+      testCase('{ [].map(() => expect(1).toBe(1)); }'),
+    ).find((candidate) => candidate.ruleId === 'UT001');
 
-    expect(findings).toContain('UT001');
-    expect(findings).not.toContain('UT002');
+    expect(finding).toMatchObject({ classification: 'FAKE' });
   });
 
   it('recognizes Node native assertions as assertions', () => {
@@ -328,6 +473,14 @@ describe('evaluateRules', () => {
 
     expect(ids(nodeTest)).not.toContain('UT001');
     expect(ids(nodeTest)).toContain('UT002');
+  });
+
+  it('recognizes imported Node assertions in Vitest tests', () => {
+    const vitestTest = testCase('{ assert.deepEqual(actual, expected); }', {
+      nativeAssertionBindings: [{ localName: 'assert', kind: 'namespace' }],
+    });
+
+    expect(ids(vitestTest)).not.toContain('UT001');
   });
 
   it('preserves Node native actual and expected argument order', () => {
@@ -377,6 +530,43 @@ describe('evaluateRules', () => {
     expect(
       ids(testCase('{ expect(result).toEqual(expected); }')),
     ).not.toContain('UT012');
+  });
+
+  it('does not report UT012 when a local helper returns expect.poll for a matcher chain', () => {
+    expect(
+      ids(
+        testCase(`{
+  function poll(read) {
+    return expect.poll(read);
+  }
+  poll(() => value).toBe('ready');
+}`),
+      ),
+    ).not.toContain('UT012');
+    expect(ids(testCase('{ expect.poll(() => value); }'))).toContain('UT012');
+  });
+
+  it('does not report UT012 when a returned expect.poll chain uses a modifier', () => {
+    expect(
+      ids(
+        testCase(`{
+  function poll(read) { return expect.poll(read); }
+  poll(() => value).not.toBe('ready');
+}`),
+      ),
+    ).not.toContain('UT012');
+  });
+
+  it('keeps UT012 when a returned expect.poll helper also has an unchained use', () => {
+    expect(
+      ids(
+        testCase(`{
+  function poll(read) { return expect.poll(read); }
+  poll(() => value).toBe('ready');
+  poll(() => value);
+}`),
+      ),
+    ).toContain('UT012');
   });
 
   it('reports UT013 only when assertions(0) contradicts an actual matcher', () => {
@@ -502,7 +692,7 @@ describe('evaluateRules', () => {
     ).not.toContain('UT003');
   });
 
-  it('reports UT008 for an empty catch block and a catch block that only logs', () => {
+  it('reports UT008 as contextual when an empty catch has no assertion to swallow', () => {
     const findings = evaluateRules(
       testCase(
         '{\n  try {\n    await save();\n  } catch {}\n  try {\n    await save();\n  } catch (error) {\n    console.error(error);\n  }\n}',
@@ -510,9 +700,31 @@ describe('evaluateRules', () => {
     ).filter((finding) => finding.ruleId === 'UT008');
 
     expect(findings).toMatchObject([
-      { line: 13, severity: 'CRITICAL' },
-      { line: 16, severity: 'CRITICAL' },
+      { line: 13, classification: 'WEAK', severity: 'WARNING' },
+      { line: 16, classification: 'WEAK', severity: 'WARNING' },
     ]);
+  });
+
+  it('downgrades swallowed errors when no assertion is inside the try block', () => {
+    const finding = evaluateRules(
+      testCase('{ try { process.kill(pid, "SIGKILL"); } catch {} }'),
+    ).find((candidate) => candidate.ruleId === 'UT008');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+    });
+  });
+
+  it('keeps UT008 critical when an assertion failure is swallowed', () => {
+    const finding = evaluateRules(
+      testCase('{ try { expect(result).toBe("ready"); } catch {} }'),
+    ).find((candidate) => candidate.ruleId === 'UT008');
+
+    expect(finding).toMatchObject({
+      classification: 'FAKE',
+      severity: 'CRITICAL',
+    });
   });
 
   it('does not report UT008 when the catch block rethrows', () => {
@@ -885,6 +1097,25 @@ describe('evaluateRules', () => {
 
     expect(findings).not.toContain('E2E001');
     expect(findings).toContain('E2E003');
+  });
+
+  it('downgrades Playwright assertions inside an opaque helper callback', () => {
+    const finding = evaluateRules(
+      testCase(
+        `{
+  await withBrowser(async ({ page }) => {
+    await expect(page.getByRole('heading')).toBeVisible();
+  });
+}`,
+        { framework: 'playwright', type: 'e2e' },
+      ),
+    ).find((candidate) => candidate.ruleId === 'E2E001');
+
+    expect(finding).toMatchObject({
+      classification: 'WEAK',
+      severity: 'WARNING',
+      confidence: 'MEDIUM',
+    });
   });
 
   it('reports E2E004 for a numeric Playwright waitForTimeout but not a variable timeout', () => {

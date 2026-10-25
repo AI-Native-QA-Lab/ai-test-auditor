@@ -92,8 +92,9 @@ const severityLabels = {
 
 const ruleDescriptions = {
   E2E001: {
-    en: 'Playwright test callback has no recognized expect assertion.',
-    'zh-CN': 'Playwright 测试回调中没有可识别的 expect 断言。',
+    en: 'Playwright test callback has no recognized expect assertion; opaque callbacks and assertion-like imported helpers are WEAK evidence.',
+    'zh-CN':
+      'Playwright 测试回调中没有可识别的 expect 断言；不透明 callback 和断言式导入 helper 只作为 WEAK 证据。',
   },
   E2E002: {
     en: 'Every recognized Playwright assertion checks only the page URL.',
@@ -112,9 +113,9 @@ const ruleDescriptions = {
 const chineseFindingCopy = {
   E2E001: {
     message:
-      'E2E001 未在此 Playwright 流程中识别到 expect 断言。静态分析无法证明仅有导航或操作即可验证用户可见结果。',
+      'E2E001 无法确认此 Playwright 流程中有会执行的 expect 断言；opaque callback 或只能从导入 helper 名称推测的断言会报告为 WEAK，单独的导航或操作也未证明用户可见结果。',
     remediation:
-      '补充对可观察用户结果或状态变化的断言。静态分析无法判断每个预期的流程结果是否都已覆盖。',
+      '确保流程包含对可观察用户结果或状态变化的断言；检查导入 helper 的实现，并让 callback 处于可确认的执行路径中。',
   },
   E2E002: {
     message:
@@ -141,7 +142,10 @@ export function renderJson(result: AuditResult): string {
 }
 
 function localizedFindingCopy(
-  finding: Pick<Finding, 'ruleId' | 'message' | 'remediation'>,
+  finding: Pick<
+    Finding,
+    'ruleId' | 'message' | 'remediation' | 'classification'
+  >,
   locale: ReportLocale,
 ): { readonly message: string; readonly remediation: string } {
   if (locale === 'en') {
@@ -150,6 +154,20 @@ function localizedFindingCopy(
   const legacyCopy =
     chineseFindingCopy[finding.ruleId as keyof typeof chineseFindingCopy];
   if (legacyCopy) return legacyCopy;
+  if (finding.ruleId === 'UT008') {
+    return finding.classification === 'FAKE'
+      ? {
+          message:
+            'UT008：try 块中的可识别断言失败会被空 catch 或仅日志 catch 吞掉。',
+          remediation: '在 catch 中验证预期失败，或重新抛出意外的断言错误。',
+        }
+      : {
+          message:
+            'UT008：空 catch 或仅日志 catch 捕获错误，但 try 块中没有可识别断言。静态分析无法判断这是预期清理/探测，还是抑制测试失败。',
+          remediation:
+            '确认捕获的是预期错误；否则验证预期失败或重新抛出意外错误。',
+        };
+  }
   const definition = getRuleDefinition(finding.ruleId);
   if (!definition) {
     return { message: finding.message, remediation: finding.remediation };

@@ -35,7 +35,7 @@
       "type": "e2e",
       "expectedFindings": [
         { "ruleId": "E2E005", "classification": "WEAK" },
-        { "ruleId": "E2E006", "classification": "FAKE" },
+        { "ruleId": "E2E006", "classification": "WEAK" },
         { "ruleId": "E2E007", "classification": "WEAK" },
         { "ruleId": "E2E008", "classification": "FAKE" },
         { "ruleId": "E2E009", "classification": "WEAK" },

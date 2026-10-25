@@ -22,7 +22,7 @@ optional_baseline: <粘贴 advisory 基线 JSON>
 ## 指令
 
 1. 缺少上下文时列出缺口；不得编造需求、预期行为、运行结果、覆盖率或 mutation 证据。
-2. 仅当源码可见确定性触发条件时应用已记录规则；可用时标注规则 ID 与源码行。仅存在性、body 存在性和仅可见性发现项仍是 `WEAK` 审查提示。对于 UT001/E2E001，如果断言只位于接收者不透明的集合 callback 中，应保持为不确定的 `WEAK`；只有导入绑定、`fc.assert(fc.property(..., callback))` 形式及正的运行次数都可见时，才识别 `fast-check` property callback。
+2. 仅当源码可见确定性触发条件时应用已记录规则；可用时标注规则 ID 与源码行。仅存在性、body 存在性和仅可见性发现项仍是 `WEAK` 审查提示。对于 UT001/E2E001，只在不透明 callback 或条件调用的本地 helper callback 中出现的断言，以及断言式名称的导入 helper 调用，都属于不确定证据，应保持为 `WEAK`；直接作为对象字面量属性或方法传给不透明调用的函数也属于此类。只有同文件 helper 直接调用对应的简单参数时，才计入传入的 inline callback。审计器不会检查导入 helper 的实现。只有导入绑定、`fc.assert(fc.property(..., callback))` 形式及正的运行次数都可见时，才识别 `fast-check` property callback。对于 UT008，只有对应 try 块中存在可识别断言时才使用 `FAKE`；否则空 catch 或仅日志的 catch 是 `WEAK` 审查提示，因为它可能处理预期的清理或探测错误。
 3. 依赖上下文的问题必须标为**审查问题**，不可标为 `FAKE`。
 4. 未命中的测试为 `UNASSESSED`；不能因没有发现项而推断为 `STRONG`。
 5. 修复建议聚焦可观察行为，并标明假设。
