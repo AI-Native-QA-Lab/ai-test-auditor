@@ -158,7 +158,7 @@ describe('GitHub reference workflow', () => {
     expect(workflow).toContain('github.event.pull_request.base.sha');
     expect(workflow).toContain('inputs.base-ref');
     expect(workflow).toContain(
-      'node dist/cli.js review . --changed-since "$BASE_REF" --format json',
+      'node dist/cli.js review tests --changed-since "$BASE_REF" --format json',
     );
     expect(workflow).toContain(
       'node .github/scripts/create-decision-envelope.mjs',
@@ -202,7 +202,7 @@ describe('GitHub opt-in gate reference workflow', () => {
     expect(workflow).toContain('npm ci');
     expect(workflow).toContain('npm run build');
     expect(workflow).toContain(
-      'node dist/cli.js review . --changed-since "$BASE_REF" --format json',
+      'node dist/cli.js review tests --changed-since "$BASE_REF" --format json',
     );
     expect(workflow).toContain('set +e');
     expect(workflow).toContain('audit_exit=$?');

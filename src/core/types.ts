@@ -5,9 +5,26 @@ export type Severity = 'CRITICAL' | 'WARNING' | 'INFO';
 
 export type TestType = 'unit' | 'api' | 'e2e' | 'unknown';
 
-export type Framework = 'jest' | 'vitest' | 'playwright' | 'unknown';
+export type Framework =
+  'jest' | 'vitest' | 'playwright' | 'node-test' | 'unknown';
 
 export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type NativeAssertionBinding =
+  | {
+      readonly localName: string;
+      readonly kind: 'namespace';
+    }
+  | {
+      readonly localName: string;
+      readonly kind: 'method';
+      readonly methodName: string;
+    };
+
+export interface TestAnalysisContext {
+  readonly source: string;
+  readonly callbackStart: number;
+}
 
 export interface TestCase {
   readonly filePath: string;
@@ -17,7 +34,15 @@ export interface TestCase {
   readonly line: number;
   readonly source: string;
   readonly body: string;
+  readonly expectBindings?: readonly string[];
+  readonly nativeAssertionBindings?: readonly NativeAssertionBinding[];
+  readonly analysisContext?: TestAnalysisContext;
 }
+
+export type AuditTestCase = Omit<
+  TestCase,
+  'expectBindings' | 'analysisContext'
+>;
 
 export interface ParserDiagnostic {
   readonly filePath: string;
@@ -124,7 +149,7 @@ export interface DecisionBaselineContext {
 export interface DecisionEnvelope {
   readonly version: '1';
   readonly audit: {
-    readonly tests: readonly TestCase[];
+    readonly tests: readonly AuditTestCase[];
     readonly findings: readonly Finding[];
     readonly summary: AuditSummary;
     readonly policy?: DecisionPolicyContext;
@@ -155,7 +180,7 @@ export interface GateResult {
 }
 
 export interface AuditResult {
-  readonly tests: readonly TestCase[];
+  readonly tests: readonly AuditTestCase[];
   readonly findings: readonly Finding[];
   readonly diagnostics?: readonly ParserDiagnostic[];
   readonly semantic?: import('./semantic.js').SemanticReport;

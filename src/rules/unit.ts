@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { visitExecutableNodes } from './ast-traversal.js';
 import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
@@ -7,14 +8,17 @@ import {
   expectCalls,
   hasOnlyMatchers,
   hasOnlyZeroArgumentMatchers,
+  hasImportedAssertionLikeCall,
+  hasRecognizedAssertionCall,
   finding,
   isSimpleLiteral,
+  isExpectReference,
   isUnitTest,
   literalKey,
+  nativeAssertionCalls,
   sourceFileFor,
   structuralText,
   structurallyIdenticalArguments,
-  visitNodes,
 } from './utils.js';
 
 const fakeMessage = (detail: string): string =>
@@ -28,28 +32,78 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
 
   const sourceFile = sourceFileFor(testCase);
   const findings: Finding[] = [];
-  const testAssertions = assertions(sourceFile);
+  const nativeBindings = testCase.nativeAssertionBindings ?? [];
+  const expectBindings = testCase.expectBindings;
+  const rootCallbackStart = testCase.analysisContext?.callbackStart;
+  const testAssertions = assertions(
+    sourceFile,
+    testCase.framework,
+    nativeBindings,
+    expectBindings,
+    rootCallbackStart,
+  );
 
-  if (expectCalls(sourceFile).length === 0) {
+  if (
+    expectCalls(
+      sourceFile,
+      expectBindings,
+      testCase.framework,
+      rootCallbackStart,
+    ).length === 0 &&
+    nativeAssertionCalls(
+      sourceFile,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
+    ).length === 0
+  ) {
+    const possibleAssertion =
+      visitExecutableNodes(sourceFile, () => {}, {
+        expectBindings,
+        framework: testCase.framework,
+        rootCallbackStart,
+      }).some((callback) =>
+        hasRecognizedAssertionCall(
+          callback,
+          testCase.framework,
+          nativeBindings,
+          expectBindings,
+        ),
+      ) ||
+      hasImportedAssertionLikeCall(
+        sourceFile,
+        testCase.framework,
+        expectBindings,
+        rootCallbackStart,
+      );
     findings.push(
       finding(
         testCase,
         sourceFile,
         'UT001',
-        'FAKE',
-        'CRITICAL',
-        'HIGH',
-        fakeMessage(
-          'UT001 found no Jest, Vitest, or Playwright expect call in this test.',
-        ),
-        fakeRemediation(
-          'Add an assertion for an observable behavior or side effect.',
-        ),
+        possibleAssertion ? 'WEAK' : 'FAKE',
+        possibleAssertion ? 'WARNING' : 'CRITICAL',
+        possibleAssertion ? 'MEDIUM' : 'HIGH',
+        possibleAssertion
+          ? 'UT001 found assertion-like evidence only inside an opaque callback or imported helper whose behavior cannot be verified locally.'
+          : fakeMessage(
+              'UT001 found no recognized expect or Node native assert call in this test.',
+            ),
+        possibleAssertion
+          ? 'Make callback invocation explicit or review the imported helper implementation; static analysis cannot establish whether opaque callbacks run or helpers assert.'
+          : fakeRemediation(
+              'Add an assertion for an observable behavior or side effect.',
+            ),
       ),
     );
   }
 
-  const bareExpect = bareExpectCalls(sourceFile)[0];
+  const bareExpect = bareExpectCalls(
+    sourceFile,
+    expectBindings,
+    testCase.framework,
+    rootCallbackStart,
+  )[0];
   if (bareExpect) {
     findings.push(
       finding(
@@ -67,9 +121,15 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     );
   }
 
-  const zeroAssertionGuard = assertionCountGuards(sourceFile).find(
+  const zeroAssertionGuard = assertionCountGuards(
+    sourceFile,
+    expectBindings,
+    rootCallbackStart,
+  ).find(
     (guard) =>
-      guard.expression.getText() === 'expect.assertions' &&
+      ts.isPropertyAccessExpression(guard.expression) &&
+      isExpectReference(guard.expression.expression, expectBindings) &&
+      guard.expression.name.text === 'assertions' &&
       guard.arguments.length === 1 &&
       guard.arguments[0]?.kind === ts.SyntaxKind.NumericLiteral &&
       guard.arguments[0].getText() === '0',
@@ -94,13 +154,20 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   }
 
   if (
-    hasOnlyMatchers(sourceFile, [
-      'toHaveBeenCalled',
-      'toHaveBeenCalledTimes',
-      'toHaveBeenCalledWith',
-      'toHaveBeenLastCalledWith',
-      'toHaveBeenNthCalledWith',
-    ])
+    hasOnlyMatchers(
+      sourceFile,
+      [
+        'toHaveBeenCalled',
+        'toHaveBeenCalledTimes',
+        'toHaveBeenCalledWith',
+        'toHaveBeenLastCalledWith',
+        'toHaveBeenNthCalledWith',
+      ],
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
+    )
   ) {
     findings.push(
       finding(
@@ -121,7 +188,14 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   }
 
   if (
-    hasOnlyMatchers(sourceFile, ['toMatchSnapshot', 'toMatchInlineSnapshot'])
+    hasOnlyMatchers(
+      sourceFile,
+      ['toMatchSnapshot', 'toMatchInlineSnapshot'],
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
+    )
   ) {
     findings.push(
       finding(
@@ -141,7 +215,17 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     );
   }
 
-  if (hasOnlyZeroArgumentMatchers(sourceFile, ['toBeDefined', 'toBeTruthy'])) {
+  if (
+    hasOnlyZeroArgumentMatchers(
+      sourceFile,
+      ['toBeDefined', 'toBeTruthy'],
+      () => true,
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
+    )
+  ) {
     findings.push(
       finding(
         testCase,
@@ -159,8 +243,15 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
   }
 
   for (const assertion of testAssertions) {
-    const expected = assertion.matcher.arguments[0];
+    const expected = assertion.expected;
+    const literalComparisonIsStatic =
+      !assertion.isNegated &&
+      !assertion.hasPromiseModifier &&
+      (!assertion.isPolled || assertion.pollResultKnown);
+    const structuralComparisonIsStatic =
+      literalComparisonIsStatic && !assertion.isPolled;
     if (
+      literalComparisonIsStatic &&
       expected &&
       isSimpleLiteral(assertion.actual) &&
       isSimpleLiteral(expected) &&
@@ -185,21 +276,27 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     }
 
     if (
+      structuralComparisonIsStatic &&
       expected &&
       !isSimpleLiteral(assertion.actual) &&
       structuralText(assertion.actual) === structuralText(expected)
     ) {
+      const repeatedEvaluationMayDiffer =
+        hasPotentialEvaluationDifference(assertion.actual) ||
+        hasPotentialEvaluationDifference(expected);
       findings.push(
         finding(
           testCase,
           assertion.matcher,
           'UT003',
-          'FAKE',
-          'CRITICAL',
+          repeatedEvaluationMayDiffer ? 'WEAK' : 'FAKE',
+          repeatedEvaluationMayDiffer ? 'WARNING' : 'CRITICAL',
           'HIGH',
-          fakeMessage(
-            'UT003 asserts an expression against the identical expression.',
-          ),
+          repeatedEvaluationMayDiffer
+            ? 'UT003 repeats structurally identical expressions that may allocate fresh identities, invoke calls, access properties, coerce values, or use mutation-capable syntax. Their evaluations may produce different values; static analysis cannot determine their runtime results.'
+            : fakeMessage(
+                'UT003 asserts an expression against the identical expression.',
+              ),
           fakeRemediation(
             'Compare the observed value with an independently derived expected value.',
           ),
@@ -208,6 +305,7 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     }
 
     if (
+      structuralComparisonIsStatic &&
       expected &&
       ts.isCallExpression(assertion.actual) &&
       ts.isCallExpression(expected) &&
@@ -223,12 +321,10 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
           testCase,
           assertion.matcher,
           'UT011',
-          'FAKE',
-          'CRITICAL',
-          'HIGH',
-          fakeMessage(
-            'UT011 calls the same callee with structurally identical arguments for both actual and expected values.',
-          ),
+          'WEAK',
+          'WARNING',
+          'MEDIUM',
+          'UT011 calls the same callee with structurally identical arguments twice. The two calls may have side effects or return different values; static analysis cannot determine their runtime behavior.',
           fakeRemediation(
             'Call the system under test once and compare its result with an independent expectation.',
           ),
@@ -237,33 +333,122 @@ export function evaluateUnitRules(testCase: TestCase): Finding[] {
     }
   }
 
-  visitNodes(sourceFile, (node) => {
-    if (!ts.isCatchClause(node)) return;
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (!ts.isCatchClause(node)) return;
 
-    const statements = node.block.statements;
-    const onlyLogs =
-      statements.length === 0 || statements.every(isConsoleLoggingStatement);
-    if (!onlyLogs) return;
+      const statements = node.block.statements;
+      const onlyLogs =
+        statements.length === 0 || statements.every(isConsoleLoggingStatement);
+      if (!onlyLogs) return;
 
-    findings.push(
-      finding(
-        testCase,
-        node,
-        'UT008',
-        'FAKE',
-        'CRITICAL',
-        'HIGH',
-        fakeMessage(
-          'UT008 catches an error without throwing it and only leaves it empty or logs it.',
+      const tryStatement = node.parent;
+      const swallowsRecognizedAssertion =
+        ts.isTryStatement(tryStatement) &&
+        testAssertions.some((assertion) =>
+          isDescendantOf(assertion.matcher, tryStatement.tryBlock),
+        );
+
+      findings.push(
+        finding(
+          testCase,
+          node,
+          'UT008',
+          swallowsRecognizedAssertion ? 'FAKE' : 'WEAK',
+          swallowsRecognizedAssertion ? 'CRITICAL' : 'WARNING',
+          swallowsRecognizedAssertion ? 'HIGH' : 'MEDIUM',
+          swallowsRecognizedAssertion
+            ? fakeMessage(
+                'UT008 catches an assertion failure without throwing it and only leaves the catch empty or logs it.',
+              )
+            : 'UT008 catches an error and only leaves the catch empty or logs it. Static analysis cannot determine whether this is expected cleanup or suppresses a test failure.',
+          swallowsRecognizedAssertion
+            ? fakeRemediation(
+                'Assert the expected failure in the catch block or rethrow the error so an unexpected assertion failure can fail the test.',
+              )
+            : 'Confirm the caught error is expected; otherwise assert the expected failure or rethrow unexpected errors.',
         ),
-        fakeRemediation(
-          'Assert the failure behavior or rethrow the error so an unexpected failure can fail the test.',
-        ),
-      ),
-    );
-  });
+      );
+    },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
+  );
 
   return findings;
+}
+
+function isDescendantOf(node: ts.Node, ancestor: ts.Node): boolean {
+  let current: ts.Node | undefined = node;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function hasPotentialEvaluationDifference(expression: ts.Expression): boolean {
+  let found = false;
+  function visit(node: ts.Node): void {
+    if (found) return;
+    if (
+      ts.isArrayLiteralExpression(node) ||
+      ts.isObjectLiteralExpression(node) ||
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isClassExpression(node) ||
+      ts.isRegularExpressionLiteral(node) ||
+      ts.isJsxElement(node) ||
+      ts.isJsxSelfClosingElement(node) ||
+      ts.isJsxFragment(node) ||
+      ts.isCallExpression(node) ||
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node) ||
+      ts.isNewExpression(node) ||
+      ts.isDeleteExpression(node) ||
+      ts.isAwaitExpression(node) ||
+      ts.isYieldExpression(node) ||
+      ts.isTemplateExpression(node) ||
+      ts.isTaggedTemplateExpression(node) ||
+      ts.isSpreadAssignment(node) ||
+      ts.isSpreadElement(node) ||
+      ts.isComputedPropertyName(node) ||
+      (ts.isBinaryExpression(node) &&
+        binaryExpressionMayInvokeUserCode(node)) ||
+      ((ts.isPrefixUnaryExpression(node) ||
+        ts.isPostfixUnaryExpression(node)) &&
+        (node.operator === ts.SyntaxKind.PlusPlusToken ||
+          node.operator === ts.SyntaxKind.MinusMinusToken ||
+          node.operator === ts.SyntaxKind.PlusToken ||
+          node.operator === ts.SyntaxKind.MinusToken ||
+          node.operator === ts.SyntaxKind.TildeToken))
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(expression);
+  return found;
+}
+
+function binaryExpressionMayInvokeUserCode(
+  expression: ts.BinaryExpression,
+): boolean {
+  switch (expression.operatorToken.kind) {
+    case ts.SyntaxKind.AmpersandAmpersandToken:
+    case ts.SyntaxKind.BarBarToken:
+    case ts.SyntaxKind.QuestionQuestionToken:
+    case ts.SyntaxKind.CommaToken:
+    case ts.SyntaxKind.EqualsEqualsEqualsToken:
+    case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+      return false;
+    default:
+      return true;
+  }
 }
 
 function isConsoleLoggingStatement(statement: ts.Statement): boolean {

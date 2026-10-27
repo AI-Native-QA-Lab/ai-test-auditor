@@ -17,8 +17,14 @@ export async function selectChangedFiles(
   baseRef: string,
 ): Promise<FileSelection> {
   const cwd = resolve(root);
+  let repositoryPrefix: string;
   let baseCommit: string;
   try {
+    ({ stdout: repositoryPrefix } = await run(
+      'git',
+      ['-C', cwd, 'rev-parse', '--show-cdup'],
+      { timeout: 5000 },
+    ));
     ({ stdout: baseCommit } = await run(
       'git',
       [
@@ -36,12 +42,13 @@ export async function selectChangedFiles(
       `Changed-since ref is invalid or unavailable: ${baseRef}`,
     );
   }
+  const gitRoot = resolve(cwd, repositoryPrefix.trim() || '.');
   try {
     const { stdout } = await run(
       'git',
       [
         '-C',
-        cwd,
+        gitRoot,
         '-c',
         'core.quotepath=false',
         'diff',
@@ -56,16 +63,23 @@ export async function selectChangedFiles(
     const changed = stdout
       .split('\0')
       .filter(Boolean)
-      .map((file) => resolve(cwd, file));
+      .map((file) => resolve(gitRoot, file));
     const { stdout: status } = await run(
       'git',
-      ['-C', cwd, 'status', '--porcelain=v1', '-z', '--untracked-files=all'],
+      [
+        '-C',
+        gitRoot,
+        'status',
+        '--porcelain=v1',
+        '-z',
+        '--untracked-files=all',
+      ],
       { timeout: 5000, maxBuffer: 4 * 1024 * 1024 },
     );
     const untracked = status
       .split('\0')
       .filter((entry) => entry.startsWith('?? '))
-      .map((entry) => resolve(cwd, entry.slice(3)));
+      .map((entry) => resolve(gitRoot, entry.slice(3)));
     return {
       mode: 'changed-since',
       requestedBaseRef: baseRef,

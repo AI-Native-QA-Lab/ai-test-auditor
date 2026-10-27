@@ -113,3 +113,187 @@ GitHub Actions run `35501372111` 的 checkout、依赖安装和 build 均通过�
 v1.2.1 是 v1.2.0 的补丁发布，包含 advisory GitHub Actions workflow 退出语义修复：发现项仍写入 Job Summary，不再让 advisory workflow 因静态 FAKE/WEAK 结果失败；无效输入 `2` 与显式 gate 语义保持不变。
 
 发布提交前通过 23 个测试文件、239 个测试，lint、typecheck、format、build、benchmark（3/3）和 `git diff --check`；`package.json` 与 `package-lock.json` 同步为 `1.2.1`。
+
+## 2026-09-27 Node 原生断言识别
+
+背景决策：Node `node:test` 回调纳入框架识别，框架值为 `node-test`；直接 `assert(...)`、`assert.method(...)` 以及从 `node:assert` 静态声明的绑定作为可识别的原生断言。比较型原生断言复用 `UT002`、`UT003`、`UT011` 的既有静态规则；Node 测试仍保持 `type: "unknown"`，因为 `node:test` 本身不能证明测试属于 unit、API 或集成类型。封装和间接 helper 不作推断，保持 `UNASSESSED`；审计器不 import、执行或解析运行时依赖。
+
+验证证据：先为 Node 框架提取和 `assert.strictEqual` 断言补充回归测试并观察到聚焦 RED（2 条失败）；最小实现后聚焦 GREEN 为 4 个测试文件、86 个测试通过。复核参数顺序时又补充“独立 actual/expected 不应误报”的回归测试并观察到 1 条 RED，修正后聚焦 GREEN 为 4 个测试文件、87 个测试通过。随后增加同名业务函数反例，观察到 1 条 RED 后收紧为直接 `assert` 调用，聚焦 GREEN 为 1 个测试文件、48 个测试通过。最终 `npm test` 通过 23 个测试文件、244 个测试，`npm run lint`、`npm run typecheck`、`npm run build`、`npm run benchmark`（3/3）和 `git diff --check` 通过；本次变更文件的 Prettier 检查通过。完整 `npm run format:check` 仍仅被既有未跟踪的 `.impeccable/hook.cache.json` 阻断，本次变更文件没有格式问题。
+
+实际审计验证：构建后的 `node dist/cli.js review /Users/nao.deng/awsomeCode/dsh-qa/test --format json` 识别 264 个测试回调，其中 219 个为 `node-test`，没有产生 `UT001`；修正原生断言参数顺序后静态汇总为 1 个 `FAKE`、40 个 `WEAK`、223 个 `UNASSESSED`。这只证明当前源码模式被正确提取和评估，不代表 dsh-qa 的运行时质量、覆盖率、mutation 或业务验收。
+
+## 2026-09-27 报告发现项卡片样式修正
+
+Impeccable detector 指出离线 HTML 报告的 finding 卡片使用 4px 左侧彩色边框，形成典型 side-tab 视觉。该反馈判定为真实设计问题，已改为 1px 中性全边框，`FAKE` 仅使用较暗的边框色；没有新增 ignore 或压制规则。报告数据、分类、发现项、FTR、Trust Score 和交互行为保持不变。
+
+验证：`tests/reporters.test.ts` 的 22 个测试、lint、typecheck、`git diff --check`、本次变更文件的 Prettier 检查均通过；手动 detector 对 `src/reporters.ts` 返回空结果。
+
+## 2026-10-23 项目品牌图形
+
+新增 `assets/favicon.svg` 与 `assets/github-social-preview.jpg`，并在中英文 README 的“项目素材”章节展示。图标以放大镜和源码行表达静态审阅；GitHub 社交预览使用深色扫描插画，并明确写出“source-only”定位，不暗示测试执行、LLM 审查或质量通过结论。社交图为 1280×640 JPEG，低于 GitHub 当前 1 MB 上传限制，可在仓库 Settings 的 Social preview 中上传；本次只准备 README 展示和素材，没有修改 GitHub 仓库设置。
+
+## 2026-09-27 Node 原生断言绑定误报修复
+
+审查发现：`node:assert` 的具名 import 或别名虽然是有效断言，却因回调源码不包含文件级 import 而被 `UT001` 判为 `FAKE`。修复将静态 `node:assert` 绑定作为可选 `TestCase` 元数据传入规则；它只记录 ESM 的 default、namespace 和具名绑定，不做模块解析或执行。封装和间接 helper 仍不被推断，旧的直接 `assert(...)` 与 `assert.method(...)` 识别保持不变。
+
+验证链：先增加真实 extractor → rule-engine 回归并观察到 RED，随后最小实现后聚焦测试 GREEN；`npm test` 通过 23 个测试文件、245 个测试，lint、typecheck、build、benchmark（3/3）、`git diff --check` 和本次变更文件的 Prettier 检查均通过。完整 `npm run format:check` 仍只被既有未跟踪的 `.impeccable/hook.cache.json` 阻断。构建后的 dsh-qa 审计没有产生 `UT001`；这些结果只证明源码模式识别，不代表运行时质量或业务验收。
+
+## 2026-10-14 Node 断言遮蔽误报与 CommonJS 识别修复
+
+审查发现 Node 断言识别仍有边界缺陷：回调或外层词法作用域中的参数、局部声明遮蔽 ESM 导入的 assertion 名称时会按名称误命中；CommonJS 以字面量 `require('node:test')` 和 `require('node:assert')` 声明依赖时，Node 框架与 assertion 绑定未被识别；回调源码与文件作用域分离后，未绑定的文件级自定义 `assert` 名称及被重新赋值的 CommonJS assertion 别名也可能被误认。修复只接受静态绑定、按测试调用位置过滤外层遮蔽，并排除可见重赋值；不执行源码或调用 require。英文/中文 README、规则、架构和 Skill 同步说明这一支持边界。
+
+RED/GREEN 证据：遮蔽回归先运行 `npx vitest run tests/core/extractor.test.ts`，观察到期望 `UT001`、实际却得到 `UT002`；作用域修复后同命令通过 10 个测试。CommonJS 回归再次运行同一命令，观察到框架仍为 `unknown` 且没有 native assertion bindings；实现后同命令通过 11 个测试。type-only import 回归第三次运行同一命令，观察到它被误识别为原生断言并产生 `UT002`；排除 type-only 绑定后同命令通过 12 个测试。补充的 switch 跨 case 遮蔽反例确认现有作用域检查已正确处理该语法，无需额外实现。后续文件级自定义 `assert` 与可变 CommonJS 绑定回归先运行 `npx vitest run tests/core/extractor.test.ts`，观察到两项期望 `UT001` 的用例都错误得到 `UT002`；增加文件级绑定和写入检查后，`npx vitest run tests/core/extractor.test.ts tests/core/rule-engine.test.ts` 通过 2 个文件、63 个测试。外层块级遮蔽回归再次运行 `npx vitest run tests/core/extractor.test.ts`，观察到期望 `UT001`、实际却得到 `UT002`；将遮蔽筛选放到完整文件中的测试调用位置后，同一聚焦命令通过 16 个测试，extractor 与 rule-engine 合计 64 个测试通过。
+
+最终审查又发现 CommonJS assertion namespace 的方法可在源码中被直接替换。新增回归先运行 `npx vitest run tests/core/extractor.test.ts`，观察到期望 `UT001`、实际得到 `UT002`；忽略存在直接方法替换的 namespace 后，`npx vitest run tests/core/extractor.test.ts tests/core/rule-engine.test.ts` 通过 2 个文件、65 个测试。识别边界限于源码中可见的直接成员赋值、更新和删除，不推断经别名或动态 helper 发生的修改。
+
+扫描器复核发现 Vitest 已排除 `.worktrees/`，但 audit scanner 仍会递归审计其中的 checkout；文件扩展名正则也在 scanner 和 audit 各维护一份。新增 `.worktrees` fixture 后运行 `npx vitest run tests/core/scanner.test.ts`，观察到 scanner 错误纳入工作树测试文件；加入共享 `isSupportedTestFile` 并忽略该目录后，`npx vitest run tests/core/scanner.test.ts tests/core/audit.test.ts` 通过 2 个文件、9 个测试。
+
+本次最终验证：`npm test` 通过 23 个文件、255 个测试；lint、typecheck、build、`npm run benchmark`（3/3）、变更文件 Prettier 检查和 `git diff --check` 通过。namespace 方法替换检测按 TypeScript 的 `DeleteExpression` 节点实现，最终 typecheck 与 CLI 入口测试通过。全仓 `npm run format:check` 被本地 Git exclude 中 `.impeccable/hook.cache.json` 的格式问题阻断，该文件未修改。构建后 `node dist/cli.js review benchmarks --format json` 汇总 30 个测试（12 FAKE、9 WEAK、9 UNASSESSED），JSON 中包含 25 个 finding；命令按约定以退出码 `1` 结束，这是 fixture 中存在静态 findings 的预期结果。
+
+审查记录补充：2026-09-27 前一条实现记录没有保存聚焦 RED/GREEN 命令；无法从记录中可靠还原，未补造历史命令。本次记录保留了实际观察到的命令和结果。
+
+## 2026-10-14 既有规则识别与误报边界复核
+
+本轮先复核 v1 已有识别与规则，不新增规则 ID 或测试框架类型。修正测试回调中的可执行语法遍历：直接调用的本地 helper 与常见 Promise/数组回调可参与判断，未调用的嵌套 helper 不再掩盖 `UT001` 或制造 API/E2E 断言；增加嵌套作用域遮蔽检查。完善 Jest、Vitest、Playwright、Node test 的静态绑定与修饰符识别，并收紧框架特有 modifier、`expect`/原生断言别名、静态 CommonJS require 和可见重赋值边界。现有 API 规则纳入 Node 原生比较断言，修复否定断言误报；E2E 规则补齐现代 Playwright async matcher、复合 class/id selector 判断和否定空值断言边界。scanner 与单文件审计共用测试文件识别，并跳过 `.worktrees/`。
+
+回归采用 RED/GREEN：为 modifier 提取、文件级 `var` 遮蔽、Node API 断言、否定 API/E2E 断言、复合 selector、未调用 helper、现代 Playwright matcher、循环解构重赋值和嵌套块 helper 遮蔽等边界逐项增加测试；实现前对应回归观察到错误提取、缺失/多余 finding 或预期 `UT001` 被错误压制，实现后聚焦 extractor 与 rule-engine 测试通过 2 个文件、108 个测试。新增参数化回归确认 Jest globals、Vitest 与 Playwright 的 CommonJS `expect` 别名都会参与对应规则。基准语料从 3 个扩展为 7 个契约用例，新增 unit/API/E2E matcher 和 Node assert 用例，并为非触发模式设置明确契约；`npm run benchmark` 通过 7/7，没有 missing、unexpected 或 non-trigger violation。
+
+最终验证：`npm test` 通过 23 个文件、298 个测试；`npm run lint`、`npm run typecheck`、`npm run build`、`git diff --check` 与全部本次变更文件的 Prettier 检查通过。全仓 `npm run format:check` 仍只报告本地 Git exclude 中的 `.impeccable/hook.cache.json` 格式问题，该缓存未修改。构建后 `node dist/cli.js review benchmarks --format json` 审计 37 个 fixture 测试，得到 14 个 `FAKE`、11 个 `WEAK`、12 个 `UNASSESSED`；命令以退出码 `1` 结束，因为被审计的 benchmark 本来包含 findings。该汇总用于确认 CLI 可审计这些 fixture，不是测试质量百分比或运行时质量证明。
+
+边界：静态识别限于已知绑定、局部源码语法及有限的可执行回调/直接 helper；动态包装、运行时别名、外部 helper 的语义、测试实际执行结果和覆盖率仍不在本轮证明范围。English/Chinese README、规则、架构、路线图、benchmark 与 Skill 说明已同步本轮支持边界。
+
+## 2026-10-14 同文件具名测试回调识别加固
+
+继续完善既有框架提取，不新增规则 ID 或框架类型。原提取器只接收内联函数回调，漏掉 Jest、Vitest、Playwright 和 Node `node:test` 常见的 `test(name, callbackFunction)` 形式；新增同文件函数声明及直接以函数初始化的变量解析，并把可见作用域写入检查归入 `scope-analysis`。不解析导入函数或任意别名；遇到遮蔽、函数级 `var` 遮蔽、循环赋值或静态可见的重赋值时保留未评估边界。
+
+RED/GREEN：新增正向测试覆盖同文件函数声明与函数变量，负向测试覆盖导入函数、参数遮蔽、函数级 `var`、变量/函数重赋值和循环赋值。运行 `npx vitest run tests/core/extractor.test.ts -t 'imported, shadowed, or reassigned callback identifiers'` 时，先观察到 3 个本应未提取的注册被错误解析；实现并收拢作用域写入逻辑后，`npx vitest run tests/core/extractor.test.ts tests/core/rule-engine.test.ts` 通过 2 个文件、110 个测试。
+
+验证：`npm test` 通过 23 个文件、300 个测试；`npm run lint`、`npm run typecheck`、`npm run build`、变更文件 Prettier 检查与 `git diff --check` 通过；`npm run benchmark` 通过 8/8，无 missing、unexpected 或 non-trigger violation。构建后 CLI 审计 benchmark 的 38 个测试回调得到 15 个 `FAKE`、11 个 `WEAK`、12 个 `UNASSESSED`；退出码 `1` 是因为 fixture 含静态 findings。全仓 `npm run format:check` 只被 `.impeccable/hook.cache.json` 的格式问题阻断；该文件被本地 Git exclude 忽略，本轮未改动。
+
+限制：named callback 仅处理同文件、直接函数绑定与有边界的静态作用域；动态包装、导入解析、任意别名、实际运行结果及覆盖率仍不在审计证据范围内。
+
+## 2026-10-14 原生数组 callback 遍历边界加固
+
+继续补强已有规则的可执行语法遍历，不新增规则或框架类型。`find`、`findIndex`、`findLast`、`findLastIndex`、`flatMap`、`sort` 和 `toSorted` 的内联 callback 之前被忽略，导致其中已有断言时仍可能错误产生 `UT001`。将这些名称纳入受限 Array callback 集合，并保留未知方法不自动视为会执行 callback 的负向控制。另发现静态空数组的 callback 确定不会运行；现在对可见的空 Array 字面量跳过其中 callback，避免内部断言掩盖 `UT001`。
+
+RED/GREEN：`npx vitest run tests/core/rule-engine.test.ts -t 'native array|arbitrary methods'` 先观察到 7 个常见 Array callback 用例错误得到 `UT001`，未知方法负向控制通过；实现后规则遍历识别这些 callback。随后针对 `[].map(() => expect(1).toBe(1))` 的回归先观察到只产生 `UT002`、缺少 `UT001`；增加空数组保护后 `npx vitest run tests/core/rule-engine.test.ts` 通过 1 个文件、71 个测试。Playwright 规则测试也确认这些 callback 内的可识别 matcher 不会使 journey 被误判为无断言。benchmark 的 Unit fixture 加入 `Array.find` callback 正向样例。
+
+验证：`npm test` 通过 23 个文件、310 个测试；lint、typecheck、build、变更文件 Prettier 检查与 `git diff --check` 通过；`npm run benchmark` 通过 8/8。构建后 CLI 审计 benchmark 的 39 个测试回调得到 15 个 `FAKE`、11 个 `WEAK`、13 个 `UNASSESSED`；退出码 `1` 是 fixture 含静态 findings 的预期结果。全仓 `npm run format:check` 仍只被本地 Git exclude 忽略的 `.impeccable/hook.cache.json` 格式问题阻断，该缓存未修改。
+
+边界：callback 识别限于静态列出的 Promise、Array、polling 与 `toPass` 调用形式；不会推断任意方法的执行语义，也不会把空 Array 字面量内的 callback 当成有效断言。未命中的测试仍是 `UNASSESSED`，不代表运行时质量结论。
+
+## 2026-10-14 可执行 callback 与既有规则误报复核
+
+整体复核发现 callback 遍历只按方法名推断执行会漏掉自定义对象上的 `map`、`then`、`catch`、`poll`、`toPass` 等同名方法；相反，`sort` / `toSorted`、单元素无初始值 `reduce` 和全空位数组的 callback 并不保证运行。遍历现在只识别有语法证据的直接 Array 字面量 callback，以及返回或等待的 primitive `Promise.resolve` / `Promise.reject` 链；另识别已绑定的 Vitest / Playwright `expect.poll` 与 Playwright `expect(callback).toPass()`。同时修复 Playwright `toPass` callback 的 AST 位置识别。E2E005 现处理 `xpath=` 与 `css=` engine 前缀；Node 原生断言识别补充 `import { strict as assert } from 'node:assert'`，并排除 CommonJS object-rest 绑定造成的伪断言。
+
+RED/GREEN：新增 callback 执行边界回归后，`npx vitest run tests/core/rule-engine.test.ts` 首次观察到 13 项失败，覆盖不确定数组/Promise/custom-method callback、engine-prefixed selector 与 `toPass` 内部 matcher；修正后与提取器回归合并运行，`npx vitest run tests/core/rule-engine.test.ts tests/core/extractor.test.ts` 通过 2 个文件、153 项。strict assertion 和 CommonJS rest 用例先运行 `npx vitest run tests/core/extractor.test.ts -t 'strict assertion export|CommonJS object rest binding'`，观察到 2 项失败，新增绑定约束后聚焦测试通过。另为 API005 否定属性断言补强元数据回归；代码已有 `isNegated` 保护，因此无需生产代码变更。
+
+验证：最终 `npm test` 通过 23 个文件、345 项；`npm run lint`、`npm run typecheck`、`npm run build` 和 `npm run benchmark`（8/8）通过。构建后 `node dist/cli.js review benchmarks --format json` 审计 39 个 fixture 回调，汇总为 15 个 `FAKE`、11 个 `WEAK`、0 个 `INVALID`、13 个 `UNASSESSED`；退出码 `1` 是 benchmark fixture 含静态 findings 的预期结果。`git diff --check` 通过。全仓 `npm run format:check` 仍因本地 Git exclude 忽略的 `.impeccable/hook.cache.json` 格式问题退出 `1`，该缓存保持未修改；变更文件的 Prettier 检查另行验证。
+
+边界：静态 callback 白名单不证明任意对象方法或运行时替换后的执行语义；Promise 推断限于源码中可见的原生 primitive resolve/reject 形式和直接返回/等待关系。漏识别的测试继续保持 `UNASSESSED`，不代表运行时质量结论。
+
+## 2026-10-14 函数作用域 callback 写入检查加固
+
+继续完善具名测试 callback 的既有解析边界，不新增规则 ID 或测试框架类型。复核发现，作用域写入检查覆盖了赋值表达式，却漏掉嵌套块中的 `var callback = ...` 初始化和 `for (var callback of ...)`。这些写入可能覆盖先前识别出的 callback，令审计使用不确定的旧函数体。解析器现在会拒绝这类有同一函数/模块变量作用域的 callback，同时区分嵌套函数自己的 `var` 绑定；class static block 等不同变量作用域不会污染外层判断。
+
+RED/GREEN：`npx vitest run tests/core/extractor.test.ts -t 'nested var initializer'` 先复现了错误提取；加入初始化写入判断后该用例通过。`npx vitest run tests/core/extractor.test.ts -t 'var for-of initializer'` 再复现 `for...of` 变量目标漏判；补齐迭代声明检查后，与嵌套函数局部 `var` 负向控制、既有具名 callback 用例一起通过，聚焦结果为 1 个文件、4 个测试。
+
+验证：`npm test` 通过 23 个文件、313 个测试；`npm run lint`、`npm run typecheck`、`npm run build` 通过；`npm run benchmark` 通过 8/8，无 missing、unexpected 或 non-trigger violation。构建后 CLI 审计 benchmark 的 39 个测试回调得到 15 个 `FAKE`、11 个 `WEAK`、13 个 `UNASSESSED`；退出码 `1` 是 fixture 含静态 findings 的预期结果。全仓 `npm run format:check` 仍只报告本地 Git exclude 忽略的 `.impeccable/hook.cache.json` 格式问题；变更文件 Prettier 检查和 `git diff --check` 通过。
+
+边界：本修复只拒绝静态可见且处于相同变量作用域的写入；动态调用、运行时覆盖和 callback 实际执行结果仍不在静态证据范围内。
+
+## 2026-10-14 E2E008 显式丢弃 matcher promise 识别
+
+继续加固现有 Playwright 规则，不新增规则 ID。审查发现 `void expect(...).toHave...()` 明确丢弃异步 matcher Promise，但原 E2E008 只检查裸表达式语句，因此会漏报。现在将 `void` 直接包裹的已识别异步 matcher 纳入 E2E008；已等待的 matcher、同步 matcher，以及直接传给 `Promise.all` 的 matcher 调用均保持为不触发形式。英文/中文规则目录和现有 E2E matcher benchmark fixture 已同步这一边界。
+
+RED/GREEN：新增 `void expect(page.getByRole('heading')).toBeVisible()` 回归后运行 `npx vitest run tests/core/rule-engine.test.ts -t 'E2E008 for direct unawaited matchers'`，先观察到只有 E2E003、缺少 E2E008；增加显式 `void` 判断后，`npx vitest run tests/core/rule-engine.test.ts -t 'E2E008 for direct unawaited matchers|recognizes unawaited Playwright async matchers'` 通过 1 个文件、2 个测试，原有 await 与 Promise.all 负向控制也通过。
+
+验证：`npm test` 通过 23 个文件、313 个测试；lint、typecheck、build 通过；`npm run benchmark` 通过 8/8。构建后 CLI 审计 benchmark 的 39 个回调得到 15 个 `FAKE`、11 个 `WEAK`、13 个 `UNASSESSED`；退出码 `1` 是 fixture 含静态 findings 的预期结果。变更文件 Prettier 检查和 `git diff --check` 通过；全仓 `npm run format:check` 仍只报告本地忽略的 `.impeccable/hook.cache.json`。
+
+边界：规则仍只识别直接表达式和显式 `void` 丢弃，不追踪赋值给变量后是否再被等待的 promise 生命周期；该限制避免将稍后正确 await 的变量误报。
+
+## 2026-10-14 本地断言 helper 重赋值边界
+
+继续校正既有规则遍历，不新增规则 ID 或测试类型。审查发现，本地函数 helper 即使在声明后、直接调用前被重新赋值，遍历器仍会因同 block 中存在同名调用而追踪原函数体；这会把已被替换的旧断言算作测试断言。现在只在直接调用之前没有静态可见的绑定写入时，才跟踪声明函数；调用之后的重赋值不会抹掉先前有效的直接调用。英文和中文规则说明已同步该边界。
+
+RED/GREEN：新增声明后重赋值回归后运行 `npx vitest run tests/core/rule-engine.test.ts -t 'local assertion helper with a visible reassignment'`，观察到只有 `UT002`、缺少应有的 `UT001`。随后发现全作用域写入检查也会漏掉调用后才发生的重赋值；为此增加“调用早于重赋值仍计入原断言”的负向控制并观察到缺少断言 finding 的 RED。按具体写入位置比较后，`npx vitest run tests/core/rule-engine.test.ts -t 'directly called local assertion helper|local assertion helper with a visible reassignment|local assertion helper called before a later reassignment|uncalled helper shadowed'` 通过 4 个测试；重赋值前调用、重赋值后调用和嵌套遮蔽均分别保持预期识别。
+
+验证：`npm test` 通过 23 个文件、315 个测试；`npm run lint`、`npm run typecheck`、`npm run build`、`npm run benchmark`（8/8）、本轮源码/测试/双语规则文档的 Prettier 检查与 `git diff --check` 通过。`npm run format:check` 仍只被本地 Git exclude 忽略的 `.impeccable/hook.cache.json` 格式问题阻断，该缓存未修改。构建后 CLI 审计 benchmark 的 39 个回调得到 15 个 `FAKE`、11 个 `WEAK`、13 个 `UNASSESSED`；退出码 `1` 是 fixture 含静态 findings 的预期结果。
+
+边界：helper 仅在同一 block 中直接调用且绑定无静态可见写入时跟踪；动态重赋值与别名语义不作推断，未识别断言的测试仍按现有契约报告 `UT001`，未命中的测试仍为 `UNASSESSED`。
+
+## 2026-10-14 整体 Review 缺陷修复
+
+修复整体代码 Review 确认的四项问题：严格 decision envelope 现在接受并验证提取器输出的 `expectBindings`，避免 GitHub reference workflow 在合法审计结果上解析失败；具名 callback 的 `expect` 与 Node 原生断言可见性按 callback 定义处的词法作用域判定，不再按注册调用点误判；提取器跳过未调用函数和测试 callback 内的延迟注册，同时继续遍历 suite callback、立即调用函数及静态解析到的直接本地 helper，并识别 `describe.skip` / `describe.only` 等 suite 变体；英文和中文规则目录移除了表格中断行，使 UT012 之后的规则保持在同一张表内。没有新增规则 ID 或框架类型。
+
+RED/GREEN：修复前，decision matcher metadata、具名 callback 的 shadowing 和未调用 helper 三类聚焦回归均观察到预期失败。实现后 `npx vitest run tests/core/extractor.test.ts tests/core/decision.test.ts` 通过 68 项；补充 parameter shadow、简洁箭头 helper、IIFE、suite helper 与嵌套 test registration 边界后，最终 `npm test` 通过 23 个文件、319 项。
+
+验证：最终 `npm run lint`、`npm run typecheck`、`npm run build`、`npm run benchmark`（8/8）、本轮源码/测试/中英文规则文档的 `npx prettier --check ...` 和 `git diff --check` 通过。全仓 `npm run format:check` 仍因 `.impeccable/hook.cache.json` 格式问题退出 1；`git check-ignore -v` 确认该本地缓存由 `.git/info/exclude` 忽略，本轮未修改。构建后 `node dist/cli.js review benchmarks --format json` 审计 39 个回调，汇总为 15 个 `FAKE`、11 个 `WEAK`、0 个 `INVALID`、13 个 `UNASSESSED`；命令以 1 退出是 benchmark 中存在静态 findings 的既有语义。
+
+边界：函数遍历只跟踪静态可解析的直接本地调用，不跟踪 helper 别名、动态调用或任意 callback API；未命中的测试仍为 `UNASSESSED`。decision envelope 只保留源码审计所需的绑定元数据，不据此推断运行时测试结果。
+
+## 2026-10-14 整体 Review 边界校正与覆盖补强
+
+继续审查现有规则的确定性边界，不新增规则 ID 或测试类型。UT003 对结构相同的两次求值保留 `FAKE` 仅限可由语法确定的情形；属性/下标读取、类型转换、模板插值、展开、显式修改，以及会创建新身份的数组、对象、函数、class、RegExp 和 JSX 表达式均降为 `WEAK`。Promise settlement 推断会保留已知 fulfilled 状态：若 `.catch()` callback 因该状态不可能执行，后续 `.then()` 中的断言不会被误判为不在测试 callback 内。E2E009 的 action 结果引用检查按词法绑定区分同名遮蔽与外层闭包读取，并且不把简单赋值左值当成读取。
+
+RED/GREEN：为重复属性/下标读取、类型转换、新建身份和只写重赋值增加回归，修复前分别观察到 UT003 错误为 `FAKE`、E2E009 漏报；去掉 class/JSX 身份保护时回归再次失败，恢复后通过。已知 fulfilled Promise 经 `.catch(...).then(...)` 的回归先观察到 UT001 误报，修复后与 unknown settlement 控制一起通过。最终聚焦命令 `npx vitest run tests/core/rule-engine.test.ts -t 'side-effectful expression|fulfillment when a catch|E2E009 for explicit page actions without await'` 通过 1 个文件、3 个测试。
+
+验证：`npm test` 通过 23 个文件、355 个测试；lint、typecheck、build 通过；benchmark 通过 12/12。构建后 `node dist/cli.js review benchmarks --format json` 审计 44 个 callback，得到 13 个 `FAKE`、17 个 `WEAK`、14 个 `UNASSESSED`、0 个 `INVALID`；退出码 `1` 是 fixture 含静态 findings 的预期语义，输出未包含内部 `expectBindings`。`git diff --check` 通过。全仓 `npm run format:check` 只因 `.impeccable/hook.cache.json` 格式问题退出 `1`；`git check-ignore -v` 确认其由本地 `.git/info/exclude` 忽略，未修改缓存；变更文件的 Prettier 检查通过。
+
+边界：规则只判断源码中可见的表达式结构与变量读取；不会执行用户代码或推断页面 action 的运行时调度。`WEAK` 是风险提示，不表示断言必然失败或页面 action 必然竞态；未命中仍为 `UNASSESSED`。
+
+## 2026-10-23 API 场景追溯设计草案
+
+根据当前 API 规则边界与 `auto` 分类行为，补充 v2.1 API 场景追溯提案，并同步英文和中文路线图。草案将单测断言质量、源码场景关联和运行结果分成独立证据层；建议先加固既有 API 类型选择，再定义 v1.5 证据契约，最后评估 JS/TS 静态场景映射。当前文档状态为待 review，未获批、未排期，本轮没有修改分析器行为。提案明确了 `no_source_match` 只针对完整且声明的扫描范围，并禁止把源码关联表述为运行通过或业务覆盖证明。
+
+## 2026-10-23 测试 callback 误报复核与降级
+
+对 `naodeng.com.cn/tests` 的源码审计与代码复核发现三类既有边界问题：UT001 未跟进已导入 `fast-check` 的 `fc.assert(fc.property(...))` callback；E2E001 未识别当前测试直接调用的外层 suite helper；断言只在接收者不透明的 `.forEach` callback 中时仍被报为确定的 `FAKE`。补充完整源文件与当前测试 callback 的内部分析上下文，以便按精确回调边界分析并解析同文件外层 helper；公开审计结果继续剥离该内部上下文。`fast-check` 只识别静态 default/namespace import、对应 `assert(property(...))` 形态和可确定的正运行次数；不透明集合 callback 不视为已执行，若其内部（包括嵌套集合 callback）有唯一断言，则 UT001/E2E001 降为 `WEAK`。进一步修复完整源文件分析下 E2E007 将测试外层条件注册当作 journey 内条件的误报；测试内部条件仍触发规则。
+
+RED/GREEN：先新增 `fast-check`、不透明 `.forEach`、外层 suite 已调用/未调用 helper 回归；`npx vitest run tests/core/audit.test.ts` 在实现前观察到 3 项预期失败。之后为测试外层条件注册新增回归，先观察到错误的 E2E007；为嵌套不透明集合回调增加回归，先观察到 UT001 仍被错误标为 `FAKE`。边界修复后，`npx vitest run tests/core/audit.test.ts tests/core/rule-engine.test.ts tests/core/extractor.test.ts` 通过 3 个文件、182 项。
+
+验证：`npm test` 通过 23 个文件、366 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮全部变更文件的 Prettier 检查和 `git diff --check` 通过。全仓 `npm run format:check` 只因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，该缓存未修改。构建后 benchmark CLI 审计 44 个回调，得到 13 个 `FAKE`、17 个 `WEAK`、14 个 `UNASSESSED`，36 个 finding；退出码 1 是 benchmark fixture 存在静态发现项的预期行为。重新静态审计目标仓库的 563 个测试回调后得到 1 个 `FAKE`、304 个 `WEAK`、258 个 `UNASSESSED`，其中无 E2E001；6 个 UT001 都为 WEAK。仅余的 E2E006 位于 `toc.spec.ts`：空 catch 吞掉 Playwright 执行错误，后续 `expect(true).toBe(true)` 不能验证旅程结果，按当前规则边界仍属合理确定性 finding。E2E005 新增的 23 个 finding 对应被当前测试调用的外层 helper 中 class/tag selector，均保持 WEAK；E2E007 回到 37 项，未把条件测试注册算成条件断言。
+
+边界：目标仓库只做静态源码审计，没有执行它的测试；这些分类不证明运行时结果、覆盖率或质量。未命中的测试仍为 `UNASSESSED`，`Trust Score` 也不是质量结论。原有路线图和 API 场景追溯草案保持原样并继续保留在工作区。
+
+## 2026-10-24 重复审计及测试注册/Locator 追溯修正
+
+重新审计 `naodeng.com.cn/tests` 后复核 563 个已提取回调，原结果为 1 个 `FAKE`、304 个 `WEAK`、258 个 `UNASSESSED`。代码复核发现插值模板测试名被 `testName` 拒绝，因此包含 `${...}` 标题的测试注册调用点完全没有进入审计；E2E005 也只识别直接以 `page` 为接收者的 selector 调用，未覆盖 Page 派生的 Locator 链。现在模板标题按源码形式保留，每个注册调用点只提取一次，不展开循环值；E2E005 可沿 Page/Locator/FrameLocator 链追踪直接调用和可见 `const` 别名，同时排除普通对象同名方法及循环/解构绑定遮蔽的别名。
+
+RED/GREEN：为插值模板标题、Page 派生 Locator、不相关对象 `.locator()` 和循环/解构变量遮蔽增加回归；先观察到模板标题未提取，以及别名 locator 漏报/被遮蔽变量误报，修复后 `npx vitest run tests/core/extractor.test.ts tests/core/rule-engine.test.ts` 与完整 `npm test` 通过。复核 E2E006 时发现没有断言的 `try/catch` 也被报为 `FAKE`；新增回归先观察到该分类过强，随后实现为 try 内有可识别 Playwright 断言时 `FAKE`、否则 `WEAK`，并将 matcher 断言本身纳入 Playwright 调用识别。聚焦 E2E006 回归通过。
+
+验证：完整测试通过 23 个文件、377 项；`npm run lint`、`npm run typecheck`、`npm run build`、本轮文件 Prettier 检查通过。全仓 `npm run format:check` 仅因本地忽略的 `.impeccable/hook.cache.json` 格式问题退出 1。benchmark CLI 静态审计 44 个回调，得到 12 个 `FAKE`、18 个 `WEAK`、14 个 `UNASSESSED` 和 36 个 finding；退出码 1 是 fixture findings 的预期行为。再次静态审计目标仓库共提取 673 个回调，得到 1 个 `FAKE`、393 个 `WEAK`、279 个 `UNASSESSED`、0 个 `INVALID`，finding 总数为 1169，未发现 E2E001。相对第一次审计，提取了 110 个插值模板标题的回调调用点；新增 finding 全为 `WEAK`：E2E005 增加 352 个、E2E007 增加 32 个、E2E003 增加 2 个，没有新增 `FAKE`。唯一 `FAKE` 仍是 `tests/e2e/specs/toc.spec.ts:92` 的 Playwright 错误被吞后以恒真断言结束。
+
+边界：审计只读取源码，没有运行目标项目测试。`WEAK`、`UNASSESSED` 与 `Trust Score` 不证明目标测试的运行效果、覆盖率或整体质量。调整后目标目录中的 `toc.spec.ts:92` 仍因 try 内断言错误被吞而保留为唯一 `FAKE`。当前工作区另含本轮以外的分析器、Skill 与路线图改动，本轮均予以保留。
+
+## 2026-10-24 dsh-qa 与 deepseek-harness 重复审计及 callback 置信度修正
+
+使用构建后的 CLI 对 `/Users/nao.deng/awsomeCode/dsh-qa` 完整静态审计：315 个回调，45 个 WEAK、270 个 UNASSESSED、0 个 FAKE/INVALID；发现仅为 E2E003 可见性提示 10 项和 E2E005 selector 提示 250 项。抽查 `test/e2e/assistant.spec.js`，均是源码可见的可访问性与 class/id selector 提示，符合规则定义。
+
+`deepseek-harness` 优化前完整报告提取 28,361 个回调，297 个 FAKE、761 个 WEAK、27,303 个 UNASSESSED、0 个 INVALID。源码复核确认 `withDefaultWeb(test, callback)` 内可见断言不能证明导入 wrapper 一定调用 callback，按 UT001 WEAK 处理；导入的 `assertFixtureInventory` 实现在 target 的 `scaffold.ts` 中确实调用 Vitest expect，但本工具不跨模块分析，按 WEAK 处理；Jest/Vitest 中静态绑定的 `node:assert` 则应识别为断言。修正后对相关 6 个代表文件重新静态审计：4 个 wrapper/helper 文件共显示 5 个 UT001 WEAK，两个 Node assert 文件无 UT001。优化后没有再次运行 deepseek-harness 的 28,361 回调全量扫描，故不把优化前聚合数冒充为最新计数。
+
+针对新增的不透明 callback 降级逻辑，发现兜底路径会把明确不会运行的 `fast-check numRuns: 0`、空数组遍历和已知 Promise settlement 未选中的 handler 也降为 WEAK。新增回归先观察到 3 项预期失败，再将这三类可确定未执行 callback 排除在不确定回调证据之外；动态或未知 callback 仍保持 WEAK。另将 E2E006 基准期望从 FAKE 更新为 WEAK：其 try 中只有 `page.goto`，断言位于 catch 之后，符合“try 内没有可识别断言则为 WEAK”的规则边界。
+
+验证：`npm test` 通过 23 个文件、382 项；lint、typecheck、build、12/12 benchmark、变更文件 Prettier 检查和 `git diff --check` 通过。`npm run format:check` 仍仅因本机忽略的 `.impeccable/hook.cache.json` 未通过，该缓存未修改。`node dist/cli.js review benchmarks --format json` 审计 44 个回调，得到 12 个 FAKE、18 个 WEAK、14 个 UNASSESSED、0 个 INVALID；退出码 1 是合成 fixture 含 FAKE finding 的预期行为。目标仓库只做静态审计，没有运行其测试。
+
+边界：deepseek-harness 优化后的验证覆盖受本轮规则影响的代表文件，没有刷新完整扫描总数；所有报告只表示源码证据，`WEAK`、`UNASSESSED` 和 Trust Score 都不代表运行效果或整体质量。
+
+## 2026-10-25 重复审计与配置对象 callback 降级
+
+再次使用构建后的 CLI 静态审计两个目标仓库。`dsh-qa` 仍为 315 个回调、45 个 WEAK、270 个 UNASSESSED、0 个 FAKE/INVALID；报告与上一轮优化后的报告逐字段一致。抽查 `assistant.spec.js` 中的 E2E003 可见性和 E2E005 class/id selector 提示，符合规则的有限语法边界。`deepseek-harness` 全量报告仍提取 28,361 个回调，统计 69 个 FAKE、965 个 WEAK、27,327 个 UNASSESSED、0 个 INVALID；相比上一份完整报告的 297 个 FAKE、761 个 WEAK、27,303 个 UNASSESSED，确认先前对不透明和确定不执行 callback 的处理显著改变了分类分布。报告路径为 `/private/tmp/deepseek-harness-auditor-repeat-20261024.json`。
+
+AI 复核全量报告的 UT001 后发现剩余误判：当断言位于 `runLoaderSmoke({ inspect() { expect(...) } })` 这类直接传入函数调用的对象字面量属性或方法时，遍历器此前只把直接作为调用参数的函数识别为不透明 callback，导致 UT001 错报 FAKE。现在这类对象属性/方法 callback 归为不确定证据并降为 WEAK，不推断被调用。UT001 和 E2E001 分别增加回归覆盖方法声明与箭头函数属性。
+
+RED/GREEN：新增两项回归先观察到期望 WEAK、实际 FAKE；实现后聚焦测试通过。构建后重新静态审计 `session-format-guard.expected.e2e.ts`、`render-tools.e2e.ts`、`office.expected.e2e.ts`、`docx-validation.e2e.ts` 和 `visual-intent.e2e.ts`，5 个文件共 7 个相关 UT001 均为 WEAK、0 个 FAKE。deepseek-harness 全量扫描耗时超过一小时；本次对象属性 callback 修正后未再跑 28,361 个回调的全量扫描，因此上述完整汇总是修正前的结果。
+
+验证：`npm test` 通过 23 个文件、384 项；`npm run lint`、`npm run typecheck`、`npm run build`、所有变更文件 Prettier 检查和 `git diff --check` 通过。`npm run format:check` 仍只因被本机 `.git/info/exclude` 忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，缓存未修改。benchmark CLI 静态审计 44 个回调，得到 12 个 FAKE、18 个 WEAK、14 个 UNASSESSED、0 个 INVALID；退出码 1 是 fixture 存在 FAKE finding 的预期行为。没有运行两个目标仓库的测试。
+
+边界：deepseek-harness 全量统计在最新 callback-property 修正前采集；修正后只验证受影响的真实文件与审计器回归。目标项目审计仍是只读静态源码分析，不代表其测试运行结果、覆盖率或质量。
+
+## 2026-10-27 PR #18 gate 范围与子目录变更选择修正
+
+复核 GitHub Actions run `40439674535`：构建通过，opt-in gate 以退出码 `1` 阻断。按其 base SHA `70c8eec61702c39b5d31f74550ec069aa4a71a35` 重放时，根目录审计提取 218 个回调、报告 3 个 FAKE 和 6 个 WEAK；全部 finding 都位于 `benchmarks/v1` 的刻意负向契约 fixture。FAKE-only gate 按策略工作，但不应把验证规则行为的 benchmark 样例作为仓库测试门禁输入。
+
+将 advisory 与 opt-in gate reference workflow 的输入目录限定为 `tests/`。这暴露出 `review <subdirectory> --changed-since` 会把仓库根相对的 Git 路径错误地再拼到子目录下；改用 `git rev-parse --show-cdup` 得到相对仓库根，并保持调用方路径形式。先观察到子目录回归测试失败，再完成修正并观察聚焦测试通过。
+
+修复后以同一 base SHA 静态审计变更的 `tests/`：213 个回调、0 个 finding；decision envelope 生成成功，FAKE-only gate 退出码 `0`。验证：`npm test` 通过 23 个测试文件、385 项；lint、typecheck、build、变更文件 Prettier 和 `git diff --check` 通过。全仓 `npm run format:check` 仍因本机忽略的 `.impeccable/hook.cache.json` 格式问题退出 `1`，该缓存未修改。目标项目测试没有执行；workflow 只审计源码。

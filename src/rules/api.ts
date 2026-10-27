@@ -1,25 +1,39 @@
 import * as ts from 'typescript';
+import { visitExecutableNodes } from './ast-traversal.js';
 import type { Finding, TestCase } from '../core/types.js';
 import {
   assertions,
   expectCalls,
   finding,
   hasOnlyZeroArgumentMatchers,
+  nativeAssertionCalls,
   sourceFileFor,
-  visitNodes,
 } from './utils.js';
 
 export function evaluateApiRules(testCase: TestCase): Finding[] {
   if (testCase.type !== 'api') return [];
 
   const sourceFile = sourceFileFor(testCase);
-  const testAssertions = assertions(sourceFile);
+  const nativeBindings = testCase.nativeAssertionBindings ?? [];
+  const expectBindings = testCase.expectBindings;
+  const rootCallbackStart = testCase.analysisContext?.callbackStart;
+  const testAssertions = assertions(
+    sourceFile,
+    testCase.framework,
+    nativeBindings,
+    expectBindings,
+    rootCallbackStart,
+  );
   const findings: Finding[] = [];
   if (
     hasOnlyZeroArgumentMatchers(
       sourceFile,
-      ['toBeDefined', 'toBeTruthy'],
+      ['toBeDefined', 'toBeTruthy', 'assert', 'ok'],
       isResponseBody,
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -39,8 +53,12 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
   if (
     hasOnlyZeroArgumentMatchers(
       sourceFile,
-      ['toBeDefined', 'toBeTruthy'],
+      ['toBeDefined', 'toBeTruthy', 'assert', 'ok'],
       isResponseObject,
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -67,11 +85,21 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testAssertions,
       (assertion) =>
         isResponseBodyOrData(assertion.actual) &&
-        ['toEqual', 'toStrictEqual', 'toMatchObject'].includes(
-          assertion.matcherName,
-        ) &&
-        Boolean(assertion.matcher.arguments[0]) &&
-        isRequestLike(assertion.matcher.arguments[0]!),
+        !assertion.isNegated &&
+        [
+          'toEqual',
+          'toStrictEqual',
+          'toMatchObject',
+          'deepEqual',
+          'deepStrictEqual',
+          'partialDeepStrictEqual',
+        ].includes(assertion.matcherName) &&
+        Boolean(assertion.expected) &&
+        isRequestLike(assertion.expected!),
+      expectBindings,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -98,8 +126,13 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testAssertions,
       (assertion) =>
         isResponseBodyOrData(assertion.actual) &&
+        !assertion.isNegated &&
         assertion.matcherName === 'toHaveProperty' &&
         assertion.matcher.arguments.length === 1,
+      expectBindings,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -123,8 +156,12 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
   if (
     hasOnlyZeroArgumentMatchers(
       sourceFile,
-      ['toBeDefined', 'toBeTruthy'],
+      ['toBeDefined', 'toBeTruthy', 'assert', 'ok'],
       isResponseHeaders,
+      testCase.framework,
+      nativeBindings,
+      expectBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -151,9 +188,23 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testAssertions,
       (assertion) =>
         isContentTypeExpression(assertion.actual) &&
-        ['toBe', 'toEqual', 'toStrictEqual', 'toContain', 'toMatch'].includes(
-          assertion.matcherName,
-        ),
+        [
+          'toBe',
+          'toEqual',
+          'toStrictEqual',
+          'toContain',
+          'toMatch',
+          'equal',
+          'strictEqual',
+          'deepEqual',
+          'deepStrictEqual',
+          'partialDeepStrictEqual',
+          'match',
+        ].includes(assertion.matcherName),
+      expectBindings,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -180,9 +231,23 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
       testAssertions,
       (assertion) =>
         isResponseRequestMetadata(assertion.actual) &&
-        ['toBe', 'toEqual', 'toStrictEqual', 'toContain', 'toMatch'].includes(
-          assertion.matcherName,
-        ),
+        [
+          'toBe',
+          'toEqual',
+          'toStrictEqual',
+          'toContain',
+          'toMatch',
+          'equal',
+          'strictEqual',
+          'deepEqual',
+          'deepStrictEqual',
+          'partialDeepStrictEqual',
+          'match',
+        ].includes(assertion.matcherName),
+      expectBindings,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
     )
   ) {
     findings.push(
@@ -204,7 +269,15 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
   }
 
   if (
-    hasOnlyApiAssertions(sourceFile, testAssertions, isEmptyResponseAssertion)
+    hasOnlyApiAssertions(
+      sourceFile,
+      testAssertions,
+      isEmptyResponseAssertion,
+      expectBindings,
+      testCase.framework,
+      nativeBindings,
+      rootCallbackStart,
+    )
   ) {
     findings.push(
       finding(
@@ -224,33 +297,45 @@ export function evaluateApiRules(testCase: TestCase): Finding[] {
     );
   }
 
-  visitNodes(sourceFile, (node) => {
-    if (!ts.isCatchClause(node)) return;
-    const statements = node.block.statements;
-    const onlyLogs =
-      statements.length === 0 || statements.every(isConsoleLoggingStatement);
-    const tryStatement = node.parent;
-    if (
-      !onlyLogs ||
-      !ts.isTryStatement(tryStatement) ||
-      !containsRequestCall(tryStatement.tryBlock)
-    ) {
-      return;
-    }
+  visitExecutableNodes(
+    sourceFile,
+    (node) => {
+      if (!ts.isCatchClause(node)) return;
+      const statements = node.block.statements;
+      const onlyLogs =
+        statements.length === 0 || statements.every(isConsoleLoggingStatement);
+      const tryStatement = node.parent;
+      if (
+        !onlyLogs ||
+        !ts.isTryStatement(tryStatement) ||
+        !containsRequestCall(
+          tryStatement.tryBlock,
+          expectBindings,
+          testCase.framework,
+        )
+      ) {
+        return;
+      }
 
-    findings.push(
-      finding(
-        testCase,
-        node,
-        'API010',
-        'FAKE',
-        'CRITICAL',
-        'HIGH',
-        'API010 catches an API request error and leaves the test passing. Static analysis cannot determine whether the request failure was expected.',
-        'Assert the expected error or rethrow the request failure so an unexpected API error can fail the test.',
-      ),
-    );
-  });
+      findings.push(
+        finding(
+          testCase,
+          node,
+          'API010',
+          'FAKE',
+          'CRITICAL',
+          'HIGH',
+          'API010 catches an API request error and leaves the test passing. Static analysis cannot determine whether the request failure was expected.',
+          'Assert the expected error or rethrow the request failure so an unexpected API error can fail the test.',
+        ),
+      );
+    },
+    {
+      expectBindings,
+      framework: testCase.framework,
+      rootCallbackStart,
+    },
+  );
   if (
     testAssertions.length === 0 ||
     !testAssertions.every((assertion) => isResponseStatus(assertion.actual))
@@ -351,21 +436,38 @@ function isResponseRequestMetadata(expression: ts.Expression): boolean {
 function isEmptyResponseAssertion(
   assertion: ReturnType<typeof assertions>[number],
 ): boolean {
+  if (assertion.isNegated) return false;
+
   if (!isResponseBodyOrData(assertion.actual)) {
+    const expected = assertion.expected;
+    if (!expected) return false;
     return (
       ts.isPropertyAccessExpression(assertion.actual) &&
       assertion.actual.name.text === 'length' &&
       isResponseBodyOrData(assertion.actual.expression) &&
-      ['toBe', 'toEqual', 'toStrictEqual'].includes(assertion.matcherName) &&
-      assertion.matcher.arguments.length === 1 &&
-      isNumericZero(assertion.matcher.arguments[0]!)
+      [
+        'toBe',
+        'toEqual',
+        'toStrictEqual',
+        'equal',
+        'strictEqual',
+        'deepEqual',
+        'deepStrictEqual',
+      ].includes(assertion.matcherName) &&
+      isNumericZero(expected)
     );
   }
 
-  const expected = assertion.matcher.arguments[0];
+  const expected = assertion.expected;
+  if (!expected) return false;
   return (
-    ['toEqual', 'toStrictEqual'].includes(assertion.matcherName) &&
-    Boolean(expected) &&
+    [
+      'toEqual',
+      'toStrictEqual',
+      'deepEqual',
+      'deepStrictEqual',
+      'partialDeepStrictEqual',
+    ].includes(assertion.matcherName) &&
     ((ts.isObjectLiteralExpression(expected) &&
       expected.properties.length === 0) ||
       (ts.isArrayLiteralExpression(expected) && expected.elements.length === 0))
@@ -380,10 +482,22 @@ function hasOnlyApiAssertions(
   sourceFile: ts.SourceFile,
   testAssertions: ReturnType<typeof assertions>,
   predicate: (assertion: ReturnType<typeof assertions>[number]) => boolean,
+  expectBindings?: readonly string[],
+  framework: TestCase['framework'] = 'unknown',
+  nativeBindings: TestCase['nativeAssertionBindings'] = [],
+  rootCallbackStart?: number,
 ): boolean {
   return (
     testAssertions.length > 0 &&
-    expectCalls(sourceFile).length === testAssertions.length &&
+    expectCalls(sourceFile, expectBindings, framework, rootCallbackStart)
+      .length +
+      nativeAssertionCalls(
+        sourceFile,
+        framework,
+        nativeBindings,
+        rootCallbackStart,
+      ).length ===
+      testAssertions.length &&
     testAssertions.every(predicate)
   );
 }
@@ -396,18 +510,26 @@ function weakRemediation(detail: string): string {
   return `${detail} Static analysis cannot judge all meaningful API outcomes.`;
 }
 
-function containsRequestCall(block: ts.Block): boolean {
+function containsRequestCall(
+  block: ts.Block,
+  expectBindings?: readonly string[],
+  framework: TestCase['framework'] = 'unknown',
+): boolean {
   let found = false;
-  visitNodes(block, (node) => {
-    if (
-      !ts.isCallExpression(node) ||
-      !ts.isPropertyAccessExpression(node.expression) ||
-      !ts.isIdentifier(node.expression.expression)
-    ) {
-      return;
-    }
-    if (node.expression.expression.text === 'request') found = true;
-  });
+  visitExecutableNodes(
+    block,
+    (node) => {
+      if (
+        !ts.isCallExpression(node) ||
+        !ts.isPropertyAccessExpression(node.expression) ||
+        !ts.isIdentifier(node.expression.expression)
+      ) {
+        return;
+      }
+      if (node.expression.expression.text === 'request') found = true;
+    },
+    { expectBindings, framework },
+  );
   return found;
 }
 

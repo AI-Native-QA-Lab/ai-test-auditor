@@ -4,14 +4,16 @@ The GitHub Actions reference workflow uses `base-ref` to select changed source a
 
 This Skill mirrors the current CLI scope. It can cite all 31 catalog IDs: UT001–UT004, UT008, UT011–UT015, API001–API010, E2E001–E2E010, and PARSER001, only when their documented syntax is present. Read the repository [rule catalog](../../docs/rules.md) for triggers and exclusions.
 
-The v1.2 additions remain source-only and bounded: request echoes, metadata-only API checks, empty results, unstable selectors, swallowed Playwright errors, conditional assertions, direct unawaited matchers, unawaited page actions, and empty UI values are not runtime conclusions. `ata benchmark` compares versioned fixture `expectedFindings` and `nonTriggers`; benchmark conformance is not execution evidence.
+The v1.2 additions remain source-only and bounded: request echoes, metadata-only API checks, empty results, unstable selectors, swallowed Playwright errors, conditional assertions, direct unawaited matchers, unawaited page actions (including an action promise assigned to a local with no read reference), and empty UI values are not runtime conclusions. For UT003, fresh array/object/function/class/RegExp/JSX identities are context-dependent and remain `WEAK`. `ata benchmark` compares versioned fixture `expectedFindings` and `nonTriggers`; benchmark conformance is not execution evidence.
 
-| Classification  | Use only when                                                               |
-| --------------- | --------------------------------------------------------------------------- |
-| `FAKE`          | A documented deterministic false-confidence syntax pattern is visible.      |
-| `WEAK`          | A documented limited-assertion or fixed-wait pattern is visible.            |
-| Review question | More application context, expected behavior, or runtime evidence is needed. |
-| `UNASSESSED`    | No documented deterministic rule visibly applies.                           |
+For UT001/E2E001, assertions inside opaque callbacks or conditionally invoked local-helper callbacks, and calls to imported assertion-like helpers, are uncertain evidence and should be `WEAK`, not `FAKE`. This includes function-valued properties and methods directly on an object literal passed to an opaque call. Imported helper implementations are not inspected. A callback passed to a same-file helper is followed only when the helper directly invokes its matching simple parameter. Node `assert` bindings from `node:assert` and `node:assert/strict` count in Jest, Vitest, and Node `node:test` callbacks. UT008 is `FAKE` only when a recognized assertion is inside the associated try block; other empty or console-only catches remain `WEAK` because they may handle expected cleanup or probing. The CLI follows imported default/namespace `fast-check` bindings only for `fc.assert(fc.property(..., callback))` when a positive run count is statically established. Same-file helpers declared in an enclosing suite count only when the current test directly calls them; sibling test callbacks remain isolated.
+
+| Classification  | Use only when                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FAKE`          | A documented deterministic false-confidence syntax pattern is visible.                                                                                              |
+| `WEAK`          | A documented limited-assertion, fixed-wait, or repeated potentially side-effectful evaluation pattern is visible, such as repeated calls or property/element reads. |
+| Review question | More application context, expected behavior, or runtime evidence is needed.                                                                                         |
+| `UNASSESSED`    | No documented deterministic rule visibly applies.                                                                                                                   |
 
 Do not report `INVALID` for import, fixture, dependency, syntax, or runtime failures unless separately supplied parser/execution evidence exists. The current CLI does not generate that evidence.
 

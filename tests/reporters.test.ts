@@ -57,7 +57,33 @@ describe('reporters', () => {
     expect(output).toContain('静态审计项：1 总计，1 已评估');
     expect(output).toContain('虚假测试');
     expect(output).toContain('仅静态源码分析');
-    expect(output).toContain('UT002：matcher 两侧比较相同的基本字面量。');
+    expect(output).toContain(
+      'UT002：matcher 或 Node 原生比较断言两侧比较相同的基本字面量。',
+    );
+  });
+
+  it('localizes UT008 according to its FAKE or WEAK classification', () => {
+    const weakOutput = renderText(
+      {
+        ...result,
+        findings: [
+          {
+            ...result.findings[0]!,
+            ruleId: 'UT008',
+            severity: 'WARNING',
+            classification: 'WEAK',
+          },
+        ],
+      },
+      'zh-CN',
+    );
+
+    expect(weakOutput).toContain(
+      'UT008：空 catch 或仅日志 catch 捕获错误，但 try 块中没有可识别断言。',
+    );
+    expect(weakOutput).toContain(
+      '静态分析无法判断这是预期清理/探测，还是抑制测试失败。',
+    );
   });
 
   it('warns that no findings do not make tests strong', () => {
@@ -136,7 +162,7 @@ describe('reporters', () => {
     expect(output).toContain('虚假测试');
     expect(output).toContain('严重');
     expect(output).toContain(
-      'title="E2E001：Playwright 测试回调中没有可识别的 expect 断言。"',
+      'title="E2E001：Playwright 流程中没有能确认执行的 expect 断言；只在不透明 callback 或断言式导入 helper 中发现的断言会报告为 WEAK。"',
     );
     expect(output).toContain('example.test.ts');
     expect(output).not.toContain(result.tests[0]?.source ?? '');
@@ -153,6 +179,12 @@ describe('reporters', () => {
             filePath: '/repo/journey.spec.ts',
             framework: 'playwright',
             type: 'e2e',
+          },
+          {
+            ...result.tests[0]!,
+            filePath: '/repo/native.test.js',
+            framework: 'node-test',
+            type: 'unknown',
           },
         ],
         findings: [
@@ -171,6 +203,7 @@ describe('reporters', () => {
     expect(output).toContain('按框架静态口径');
     expect(output).toContain('Vitest · 静态回调 1 · 发现项 0');
     expect(output).toContain('Playwright · 静态回调 1 · 发现项 1');
+    expect(output).toContain('Node 内置测试 · 静态回调 1 · 发现项 0');
     expect(output).toContain('运行器注册实例未执行、未统计。');
   });
 
@@ -187,7 +220,7 @@ describe('reporters', () => {
     );
 
     expect(output).toContain(
-      'title="E2E001：Playwright 测试回调中没有可识别的 expect 断言。"',
+      'title="E2E001：Playwright 流程中没有能确认执行的 expect 断言；只在不透明 callback 或断言式导入 helper 中发现的断言会报告为 WEAK。"',
     );
     expect(output).toContain(
       'title="E2E002：所有可识别的 Playwright 断言只检查页面 URL。"',
@@ -266,7 +299,7 @@ describe('reporters', () => {
     expect(output).toContain('class="rule-id" tabindex="0"');
     expect(output).toContain('class="rule-tooltip" role="tooltip"');
     expect(output).toContain(
-      'E2E001：Playwright 测试回调中没有可识别的 expect 断言。',
+      'E2E001 无法确认此 Playwright 流程中有会执行的 expect 断言；opaque callback 或只能从导入 helper 名称推测的断言会报告为 WEAK，单独的导航或操作也未证明用户可见结果。',
     );
     expect(output).toContain('.rule-id:hover .rule-tooltip');
     expect(output).toContain('.rule-id:focus .rule-tooltip');
@@ -288,7 +321,9 @@ describe('reporters', () => {
 
     expect(output).toContain('class="rule-navigation-item"');
     expect(output).toContain('class="rule-navigation-description"');
-    expect(output).toContain('Playwright 测试回调中没有可识别的 expect 断言。');
+    expect(output).toContain(
+      'Playwright 流程中没有能确认执行的 expect 断言；只在不透明 callback 或断言式导入 helper 中发现的断言会报告为 WEAK。',
+    );
   });
 
   it('renders localized rule and file navigation counts', () => {

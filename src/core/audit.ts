@@ -4,12 +4,14 @@ import { extractTestsWithDiagnostics } from './extractor.js';
 import { AuditConfigError, loadAuditConfig } from './config.js';
 import { evaluateRules } from './rule-engine.js';
 import { scanFiles } from './scanner.js';
+import { isSupportedTestFile } from './test-files.js';
 import { selectChangedFiles } from './changed-files.js';
 import { evaluatePolicy, loadPolicy } from './policy.js';
 import { compareBaseline, loadBaseline } from './baseline.js';
 import type {
   AuditResult,
   AuditSummary,
+  AuditTestCase,
   Classification,
   Finding,
   ParserDiagnostic,
@@ -26,8 +28,6 @@ export interface AuditOptions {
   readonly baselinePath?: string;
 }
 
-const supportedTestFile = /(?:\.(?:test|spec)\.(?:ts|tsx|js)|\.e2e\.ts)$/;
-
 export class InputPathError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,10 +41,21 @@ export function auditTestCases(tests: readonly TestCase[]): AuditResult {
   const classifications = findingsByTest.map(classifyTest);
 
   return {
-    tests: [...tests],
+    tests: tests.map(publicAuditTestCase),
     findings,
     summary: summarize(classifications, findings),
   };
+}
+
+function publicAuditTestCase(testCase: TestCase): AuditTestCase {
+  const {
+    expectBindings: _expectBindings,
+    analysisContext: _analysisContext,
+    ...publicTestCase
+  } = testCase;
+  void _expectBindings;
+  void _analysisContext;
+  return publicTestCase;
 }
 
 export async function auditPath(
@@ -69,7 +80,7 @@ export async function auditPath(
     } catch {
       throw new InputPathError(`Input path cannot be read: ${absolutePath}`);
     }
-  } else if (inputStats.isFile() && supportedTestFile.test(absolutePath)) {
+  } else if (inputStats.isFile() && isSupportedTestFile(absolutePath)) {
     files = [absolutePath];
   } else if (inputStats.isFile()) {
     throw new InputPathError(

@@ -14,7 +14,7 @@ Tests can look complete while failing to verify observable behavior. This tool s
 
 ## Core capabilities and limits
 
-It extracts direct Jest, Vitest, and Playwright callbacks and reports source-located `FAKE` or `WEAK` findings with remediation. It supports changed-file selection, optional mutation evidence, advisory policy, baseline comparison, advisory decision projection, and an explicit opt-in policy gate.
+It extracts direct Jest, Vitest, Playwright, and Node `node:test` callbacks, including recognized aliases and framework-specific `.skip`, `.only`, `.concurrent`, `.failing`/`.fails`, Playwright `.fail`/`.fixme`, `.each`, `.skipIf`, and `.runIf` registrations. Same-file function declarations and variables initialized directly with a function can be resolved when passed as callbacks; imported functions, arbitrary aliases, shadowed names, and bindings with statically visible writes are not followed. Jest, Vitest, and Playwright matcher recognition includes statically imported `expect` aliases and literal CommonJS destructuring from `@jest/globals`, `vitest`, or `@playwright/test`. It handles `.not`, `.resolves`, and `.rejects` chains; Vitest and Playwright `expect.soft`/`expect.poll` calls are recognized, with only simple polling callback return expressions unwrapped. Rule traversal skips uncalled nested functions and follows directly called local helpers, including helpers declared in an enclosing suite while keeping sibling tests isolated. It follows Promise callbacks only for primitive `Promise.resolve`/`Promise.reject` chains awaited or returned from the test callback, recognized `expect.poll` and Playwright `expect(callback).toPass()` callbacks, selected callbacks on direct Array literals when an invocation is guaranteed, and statically imported default/namespace `fast-check` property callbacks when a positive run count is statically established. Assertions found only inside opaque callbacks or conditionally invoked local-helper callbacks, and calls to imported assertion-like helpers, downgrade UT001/E2E001 to `WEAK`; callback execution and imported helper behavior are not assumed. Locally shadowed names and reassigned CommonJS aliases are excluded. Jest, Vitest, and Node tests can use recognized comparison, `assert()`, and `assert.ok()` calls through statically declared `node:assert` value imports (including its named `strict` export) or literal CommonJS `require()` bindings; bindings with a statically visible reassignment or direct namespace-method replacement are not trusted as native assertions. It reports source-located `FAKE` or `WEAK` findings with remediation and supports changed-file selection, optional mutation evidence, advisory policy, baseline comparison, advisory decision projection, and an explicit opt-in policy gate.
 
 It does not run tests, inspect runtime behavior, invoke an LLM, calculate coverage, or infer production-code-to-test relevance. An unflagged test is `UNASSESSED`, never `STRONG`. FTR and Trust Score are prioritization aids, not release decisions.
 
@@ -58,7 +58,7 @@ npm run benchmark
 `--output` works with text, json, and html. HTML writes to `audit.html` by default, or `audit-zh.html` with `--locale zh-CN`; text and JSON keep writing to stdout. `--locale zh-CN` localizes text and HTML; omitting it uses `en`. JSON keeps its stable schema and English messages.
 When HTML writes a report, stdout stays clean; add `--print-output-path` to print its absolute path to stderr for shell workflows.
 
-The v1.2 benchmark manifest covers 10 Unit rules, 10 API rules, and 10 E2E rules. `ata benchmark [manifest]` reads fixture source through the static audit pipeline, compares exact rule/classification identities, and reports fixture conformance; it never imports or executes fixture code. Malformed benchmark input exits `2`, while a valid manifest with mismatches exits `1`.
+The current catalog contains 10 Unit, 10 API, and 10 E2E rules. The v1 benchmark manifest contains twelve representative source fixtures for these catalogs. It includes matcher aliases, modifier chains, bounded polling return checks, same-file named callbacks, Node native assertion and Promise contracts, property/coercion/fresh-identity boundaries, and E2E action-result scope checks; it is not per-rule code coverage. `ata benchmark [manifest]` reads fixture source through the static audit pipeline, compares exact rule/classification identities, and reports fixture conformance; it never imports or executes fixture code. Malformed benchmark input exits `2`, while a valid manifest with mismatches exits `1`.
 
 Review configuration accepts legacy JSON without a version and normalizes it to version `1`; unknown fields, empty include/exclude patterns, and unsupported semantic providers are invalid input. `--locale en` and `--locale zh-CN` select text/HTML language without changing the JSON schema.
 
@@ -79,6 +79,16 @@ The explicit opt-in policy gate accepts only `mode: "gate"` with `blockOn: ["FAK
 ## Project boundaries
 
 The auditor never imports, executes, or evaluates reviewed source. It does not prove test strength, runtime quality, coverage, mutation score, or release readiness.
+
+## Project assets
+
+The standalone website icon is available as an SVG:
+
+![AI Test Auditor website icon](./assets/favicon.svg)
+
+Upload the GitHub social preview image from the repository's **Settings → Social preview** to set it on GitHub:
+
+![AI Test Auditor GitHub social preview](./assets/github-social-preview.jpg)
 
 ## Documentation
 
