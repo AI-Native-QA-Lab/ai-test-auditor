@@ -30,7 +30,7 @@ jobs:
       - name: Audit changed test source and publish advisory decision
         run: |
           set +e
-          node dist/cli.js review . --changed-since "$BASE_REF" --format json > audit.json
+          node dist/cli.js review tests --changed-since "$BASE_REF" --format json > audit.json
           audit_exit=$?
           set -e
 

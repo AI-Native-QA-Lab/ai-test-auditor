@@ -289,3 +289,11 @@ RED/GREEN：新增两项回归先观察到期望 WEAK、实际 FAKE；实现后�
 验证：`npm test` 通过 23 个文件、384 项；`npm run lint`、`npm run typecheck`、`npm run build`、所有变更文件 Prettier 检查和 `git diff --check` 通过。`npm run format:check` 仍只因被本机 `.git/info/exclude` 忽略的 `.impeccable/hook.cache.json` 格式问题退出 1，缓存未修改。benchmark CLI 静态审计 44 个回调，得到 12 个 FAKE、18 个 WEAK、14 个 UNASSESSED、0 个 INVALID；退出码 1 是 fixture 存在 FAKE finding 的预期行为。没有运行两个目标仓库的测试。
 
 边界：deepseek-harness 全量统计在最新 callback-property 修正前采集；修正后只验证受影响的真实文件与审计器回归。目标项目审计仍是只读静态源码分析，不代表其测试运行结果、覆盖率或质量。
+
+## 2026-10-27 PR #18 gate 范围与子目录变更选择修正
+
+复核 GitHub Actions run `40439674535`：构建通过，opt-in gate 以退出码 `1` 阻断。按其 base SHA `70c8eec61702c39b5d31f74550ec069aa4a71a35` 重放时，根目录审计提取 218 个回调、报告 3 个 FAKE 和 6 个 WEAK；全部 finding 都位于 `benchmarks/v1` 的刻意负向契约 fixture。FAKE-only gate 按策略工作，但不应把验证规则行为的 benchmark 样例作为仓库测试门禁输入。
+
+将 advisory 与 opt-in gate reference workflow 的输入目录限定为 `tests/`。这暴露出 `review <subdirectory> --changed-since` 会把仓库根相对的 Git 路径错误地再拼到子目录下；改用 `git rev-parse --show-cdup` 得到相对仓库根，并保持调用方路径形式。先观察到子目录回归测试失败，再完成修正并观察聚焦测试通过。
+
+修复后以同一 base SHA 静态审计变更的 `tests/`：213 个回调、0 个 finding；decision envelope 生成成功，FAKE-only gate 退出码 `0`。验证：`npm test` 通过 23 个测试文件、385 项；lint、typecheck、build、变更文件 Prettier 和 `git diff --check` 通过。全仓 `npm run format:check` 仍因本机忽略的 `.impeccable/hook.cache.json` 格式问题退出 `1`，该缓存未修改。目标项目测试没有执行；workflow 只审计源码。

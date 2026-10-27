@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -91,6 +91,23 @@ describe('changed-file selection', () => {
 
     expect(selection.files).toContain(join(root, 'nested', 'renamed.test.ts'));
     expect(selection.files).not.toContain(join(root, 'tracked.test.ts'));
+  });
+
+  it('resolves changed files relative to a nested review directory', async () => {
+    const root = await repository();
+    const nested = join(root, 'tests');
+    await mkdir(nested);
+    await writeFile(join(nested, 'changed.test.ts'), testSource);
+    await run('git', ['-C', root, 'add', 'tests/changed.test.ts']);
+    await run('git', ['-C', root, 'commit', '-qm', 'add nested test']);
+    await writeFile(
+      join(nested, 'changed.test.ts'),
+      `${testSource}// changed\n`,
+    );
+
+    const selection = await selectChangedFiles(nested, 'HEAD');
+
+    expect(selection.files).toEqual([join(nested, 'changed.test.ts')]);
   });
 
   it('turns an invalid ref into a controlled CLI input error', async () => {
