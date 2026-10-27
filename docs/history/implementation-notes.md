@@ -297,3 +297,11 @@ RED/GREEN：新增两项回归先观察到期望 WEAK、实际 FAKE；实现后�
 将 advisory 与 opt-in gate reference workflow 的输入目录限定为 `tests/`。这暴露出 `review <subdirectory> --changed-since` 会把仓库根相对的 Git 路径错误地再拼到子目录下；改用 `git rev-parse --show-cdup` 得到相对仓库根，并保持调用方路径形式。先观察到子目录回归测试失败，再完成修正并观察聚焦测试通过。
 
 修复后以同一 base SHA 静态审计变更的 `tests/`：213 个回调、0 个 finding；decision envelope 生成成功，FAKE-only gate 退出码 `0`。验证：`npm test` 通过 23 个测试文件、385 项；lint、typecheck、build、变更文件 Prettier 和 `git diff --check` 通过。全仓 `npm run format:check` 仍因本机忽略的 `.impeccable/hook.cache.json` 格式问题退出 `1`，该缓存未修改。目标项目测试没有执行；workflow 只审计源码。
+
+## 2026-10-27 README、仓库简介与 Topics 整理
+
+将英文和中文 README 重排为项目定位、能力边界、结果解释、快速开始、常用工作流、文档导航和贡献入口；移除入口页中过细的规则实现枚举，保留 `FAKE`、`WEAK`、`UNASSESSED`、退出码、advisory 与 FAKE-only gate 边界。同步更新 `package.json` 简介。
+
+GitHub 上 `naodeng/ai-test-auditor` 和 `AI-Native-QA-Lab/ai-test-auditor` 的简介与 Topics 已统一为 source-only static analysis 定位及 10 个技术/用途主题。通过独立临时克隆核实，两边远端 `main` 当前都指向 `b8025df`；该提交比本地工作区的 `d981573` 多 1 个合并提交，并已包含 Node `node:test` 支持。本地 `.git` 元数据不可写；本次提交/推送经用户明确授权后在临时克隆中完成，只包含本轮四个目标文件。
+
+验证：`tests/docs-contract.test.ts` 通过；`npm test` 通过 23 个文件、385 项；lint、typecheck、build、README/`package.json` Prettier 和 30 个本地 Markdown 链接检查通过。`node dist/cli.js review benchmarks --format json` 提取 44 个回调，报告 12 个 `FAKE`、18 个 `WEAK`、14 个 `UNASSESSED`；退出码 `1` 是 fixture 中存在确定性 finding 的预期结果。全仓 `npm run format:check` 只因本机 `.git/info/exclude` 忽略的 `.impeccable/hook.cache.json` 格式问题退出 `1`，该缓存未修改。
